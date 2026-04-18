@@ -20,7 +20,7 @@ class AppConfig
      */
     public static function getEnvironment(): string
     {
-        return getenv('APP_ENV');
+        return getenv('APP_ENV') ?: 'local';
     }
 
     /**
@@ -31,9 +31,9 @@ class AppConfig
     public static function getFirestoreRootCollection(): string
     {
         return match (self::getEnvironment()) {
-            'production' => '{APP-NAME}',
-            'test', => '{APP-NAME}-test',
-            default => '{APP-NAME}-test',
+            'production' => 'gmail-cleanup',
+            'test' => 'gmail-cleanup-test',
+            default => 'gmail-cleanup-test',
         };
     }
 
@@ -46,8 +46,8 @@ class AppConfig
     public static function getBasePath(): string
     {
         return match (self::getEnvironment()) {
-            'production' => '/'{APP-NAME}',
-            'test' => '/'{APP-NAME}-test',
+            'production' => '/gmail-cleanup',
+            'test' => '/gmail-cleanup-test',
             default => '',
         };
     }
