@@ -1,1 +1,4 @@
-export SECRETS=()
+#!/bin/bash
+set -eu
+
+SECRETS=("FIREBASE_SERVICE_ACCOUNT" "GCLOUD_SERVICE_ACCOUNT")
