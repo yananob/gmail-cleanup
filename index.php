@@ -121,6 +121,9 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
                 $client = new Client();
                 $client->setAuthConfig($firestoreConfig);
                 $client->addScope(Gmail::GMAIL_MODIFY);
+                if ($userEmail = AppConfig::getGmailUserEmail()) {
+                    $client->setSubject($userEmail);
+                }
                 $gmailService = new Gmail($client);
                 $gmailAppService = new GmailService($gmailService);
 
@@ -191,6 +194,9 @@ function main_event(CloudEventInterface $event): void
     $client = new Google\Client();
     $client->setAuthConfig($firestoreConfig);
     $client->addScope(Gmail::GMAIL_MODIFY);
+    if ($userEmail = AppConfig::getGmailUserEmail()) {
+        $client->setSubject($userEmail);
+    }
     $service = new Gmail($client);
 
     $rootCollection = AppConfig::getFirestoreRootCollection();
