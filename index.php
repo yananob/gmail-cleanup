@@ -6,12 +6,14 @@ use Google\CloudFunctions\FunctionsFramework;
 use Psr\Http\Message\ServerRequestInterface;
 use CloudEvents\V1\CloudEventInterface;
 use Google\Cloud\Firestore\FirestoreClient;
+use Google\Client;
 use Google\Service\Gmail;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 use App\AppConfig;
 use App\ConfigRepository;
 use App\GmailCleanupHandler;
+use App\GmailService;
 use App\Query;
 use eftec\bladeone\BladeOne;
 use GuzzleHttp\Psr7\Response;
@@ -103,6 +105,25 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
             if (!$id) return 'ID is required';
             $configRepository->delete((string)$id);
             return new Response(302, ['Location' => $basePath . '/?message=' . urlencode('削除しました')]);
+        }
+
+        if ($method === 'POST' && $uri === '/preview') {
+            if (!verify_csrf_token($body)) {
+                return new Response(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Invalid CSRF token']));
+            }
+
+            // Google Client for Gmail API
+            $client = new Client();
+            $client->setAuthConfig($firestoreConfig);
+            $client->addScope(Gmail::GMAIL_MODIFY);
+            $gmailService = new Gmail($client);
+            $gmailAppService = new GmailService($gmailService);
+
+            $data = filter_input_data($body);
+            $queryBuilder = new Query();
+            $query = $queryBuilder->build($data);
+            $messages = $gmailAppService->listMessages($query, 100);
+            return new Response(200, ['Content-Type' => 'application/json'], json_encode($messages));
         }
     } catch (\Exception $e) {
         return 'Error: ' . $e->getMessage();
