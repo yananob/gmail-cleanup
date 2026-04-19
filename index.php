@@ -35,6 +35,9 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
     $rootCollection = AppConfig::getFirestoreRootCollection();
     $configRepository = new ConfigRepository($firestore, $rootCollection);
 
+    $logger = new Logger('gmail-cleanup-http');
+    $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
+
     $views = __DIR__ . '/views';
     $cache = '/tmp/cache';
     if (!is_dir($cache)) {
@@ -109,21 +112,29 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
 
         if ($method === 'POST' && $uri === '/preview') {
             if (!verify_csrf_token($body)) {
+                $logger->error('Preview failed: Invalid CSRF token');
                 return new Response(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Invalid CSRF token']));
             }
 
-            // Google Client for Gmail API
-            $client = new Client();
-            $client->setAuthConfig($firestoreConfig);
-            $client->addScope(Gmail::GMAIL_MODIFY);
-            $gmailService = new Gmail($client);
-            $gmailAppService = new GmailService($gmailService);
+            try {
+                // Google Client for Gmail API
+                $client = new Client();
+                $client->setAuthConfig($firestoreConfig);
+                $client->addScope(Gmail::GMAIL_MODIFY);
+                $gmailService = new Gmail($client);
+                $gmailAppService = new GmailService($gmailService);
 
-            $data = filter_input_data($body);
-            $queryBuilder = new Query();
-            $query = $queryBuilder->build($data);
-            $messages = $gmailAppService->listMessages($query, 100);
-            return new Response(200, ['Content-Type' => 'application/json'], json_encode($messages));
+                $data = filter_input_data($body);
+                $queryBuilder = new Query();
+                $query = $queryBuilder->build($data);
+                $logger->info('Preview request', ['query' => $query]);
+
+                $messages = $gmailAppService->listMessages($query, 100);
+                return new Response(200, ['Content-Type' => 'application/json'], json_encode($messages));
+            } catch (\Exception $e) {
+                $logger->error('Preview failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error']));
+            }
         }
     } catch (\Exception $e) {
         return 'Error: ' . $e->getMessage();
