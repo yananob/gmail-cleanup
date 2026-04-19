@@ -1,6 +1,6 @@
 # Gmail 自動削除アプリ
 
-古いメールを自動削除（ゴミ箱へ移動）するGoogle Cloud Functionsアプリケーションです。`config.json` で削除ルールを定義し、定期的に実行することで、メールボックスを自動整理できます。
+古いメールを自動削除（ゴミ箱へ移動）するGoogle Cloud Functionsアプリケーションです。Firestoreで削除ルールを定義し、定期的に実行することで、メールボックスを自動整理できます。
 
 ---
 
@@ -23,6 +23,7 @@
 
 - **ランタイム**：PHP 8.2 以上
 - **プラットフォーム**：Google Cloud Functions
+- **データベース**：Google Cloud Firestore (Native Mode)
 - **トリガー**：Cloud Pub/Sub イベント（定期実行用）
 
 ### 削除処理の詳細
@@ -37,7 +38,8 @@
 
 - Google Cloud プロジェクトの作成
 - Gmail API の有効化
-- Google OAuth 2.0 認証情報の取得
+- Google Cloud Firestore の有効化
+- Google OAuth 2.0 認証情報 または サービスアカウントキーの取得
 
 ### 初期設定
 
@@ -49,24 +51,17 @@
 
 ---
 
-## config.json スキーマ
+## Firestore 設定スキーマ
+
+設定は Firestore に保存されます。
 
 ### 構造
 
-```json
-{
-  "targets": [
-    {
-      "keyword": "検索キーワード",
-      "from": "送信元メールアドレス",
-      "to": "送信先メールアドレス",
-      "subject": "件名",
-      "label": "ラベル名",
-      "date_before": "ISO 8601 期間形式"
-    }
-  ]
-}
-```
+- **ルートコレクション**: `gmail-cleanup` (環境により `gmail-cleanup-test` など)
+- **ドキュメント**: `configs`
+- **サブコレクション**: `configs`
+
+各ドキュメントが1つの削除ルール（ターゲット）を表します。
 
 ### フィールド詳細
 
@@ -118,120 +113,26 @@ Gmailで設定したラベル。
 | `"P1Y"` | 1年 | 1年より前のメール |
 | `"P1Y2M"` | 1年2ヶ月 | 1年2ヶ月より前のメール |
 
-期間形式の詳細：
-- `P` で始まるISO 8601形式
-- `Y`=年、`M`=月、`D`=日、`W`=週
-- 例：`P1Y2M3D` = 1年2ヶ月3日前
-
 ---
 
-## ルール定義例
+## ルール定義例（Firestoreドキュメント内）
 
 ### 例1：メールマガジンの古いメールを削除
 
 1ヶ月より前の「mailmag」ラベルが付いているメールを削除します。
 
-```json
-{
-  "targets": [
-    {
-      "label": "mailmag",
-      "date_before": "P1M"
-    }
-  ]
-}
-```
-
-### 例2：特定の送信者からの通知メールを削除
-
-「info@example.com」から送信された、且つ件名に「通知」を含む6ヶ月前のメールを削除します。
-
-```json
-{
-  "targets": [
-    {
-      "from": "info@example.com",
-      "subject": "通知",
-      "date_before": "P6M"
-    }
-  ]
-}
-```
-
-### 例3：複数のルール（複数ターゲット）
-
-複数の削除ルールを定義できます。各ターゲットは独立して評価されます。
-
-```json
-{
-  "targets": [
-    {
-      "label": "mailmag",
-      "date_before": "P1M"
-    },
-    {
-      "from": "alerts@system.example.com",
-      "date_before": "P3M"
-    },
-    {
-      "from": "noreply@github.com",
-      "subject": "notification",
-      "date_before": "P6M"
-    }
-  ]
-}
-```
-
-### 例4：除外条件を使った削除
-
-キーワードの除外条件（`-` 記号）を使って、特定のメールを対象から除外します。
-
-```json
-{
-  "targets": [
-    {
-      "keyword": "-\"important\"",
-      "label": "mailmag",
-      "date_before": "P1M"
-    }
-  ]
-}
-```
-
-このルールは、「mailmag」ラベルが付いており、本文に「important」という単語を含まない、1ヶ月より前のメールを削除します（AND結合）。
+- `label`: `mailmag`
+- `date_before`: `P1M`
 
 ---
 
 ## 条件の組み合わせ方
 
-同一ターゲット内で複数のフィールドを指定した場合、**全ての条件を満たす**メールが削除対象になります。
-
-### AND結合の例
-
-次の設定では、以下の**全て**を満たすメールが削除対象です：
-
-```json
-{
-  "targets": [
-    {
-      "from": "sales@example.com",
-      "subject": "特別オファー",
-      "date_before": "P1M"
-    }
-  ]
-}
-```
-
-- ✅ 送信元が「sales@example.com」**かつ**
-- ✅ 件名に「特別オファー」を含む**かつ**
-- ✅ 1ヶ月より前
-
-この3つの条件を**全て**満たすメールが削除対象です。
+同一ドキュメント内で複数のフィールドを指定した場合、**全ての条件を満たす**メールが削除対象になります（AND結合）。
 
 ---
 
 ## 実装詳細
 
 - **アーキテクチャ、環境変数、コーディング規約**については [docs/implementation_policy.md](docs/implementation_policy.md) を参照してください。
-- **削除処理の実装**は `src/GmailCleanupHandler.php`（コア処理）、`src/Query.php`（検索クエリ生成）で定義されています。
-- **テスト**は `tests/run_tests.sh` で実行可能です。
+- **削除処理の実装**は `src/GmailCleanupHandler.php`（コア処理）、`src/Query.php`（検索クエリ生成）、`src/ConfigRepository.php`（設定取得）で定義されています。

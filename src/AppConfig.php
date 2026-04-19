@@ -9,18 +9,17 @@ namespace App;
  * 環境は`APP_ENV`環境変数によって決定されます。
  *
  * サポートされる環境: 'production', 'test', 'local'。
- * `APP_ENV`が設定されていない場合、デフォルトは'local'です。
  */
 class AppConfig
 {
     /**
      * 現在のアプリケーション環境を取得します。
      *
-     * @return string 現在の環境 ('production', 'test', または 'local')。
+     * @return string 現在の環境。
      */
     public static function getEnvironment(): string
     {
-        return getenv('APP_ENV');
+        return (string)getenv('APP_ENV');
     }
 
     /**
@@ -31,9 +30,9 @@ class AppConfig
     public static function getFirestoreRootCollection(): string
     {
         return match (self::getEnvironment()) {
-            'production' => '{APP-NAME}',
-            'test', => '{APP-NAME}-test',
-            default => '{APP-NAME}-test',
+            'production' => 'gmail-cleanup',
+            'test' => 'gmail-cleanup-test',
+            default => 'gmail-cleanup-test',
         };
     }
 
@@ -46,8 +45,8 @@ class AppConfig
     public static function getBasePath(): string
     {
         return match (self::getEnvironment()) {
-            'production' => '/'{APP-NAME}',
-            'test' => '/'{APP-NAME}-test',
+            'production' => '/gmail-cleanup',
+            'test' => '/gmail-cleanup-test',
             default => '',
         };
     }
