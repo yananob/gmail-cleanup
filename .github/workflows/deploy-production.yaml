@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: XXX-deploy-production
+  group: gmail-cleanup-deploy-production
 
 permissions:
   contents: 'read'
@@ -23,9 +23,9 @@ jobs:
         id: set_name
         run: |
           # if [ -n "${{ github.event.pull_request.number }}" ]; then
-          #   echo "function_name=XXX${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          #   echo "function_name=gmail-cleanup${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           # else
-            echo "function_name=XXX" >> $GITHUB_OUTPUT
+            echo "function_name=gmail-cleanup" >> $GITHUB_OUTPUT
           # fi
 
   deploy:
