@@ -135,7 +135,12 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
                 $messages = $gmailAppService->listMessages($query, 100);
                 return new Response(200, ['Content-Type' => 'application/json'], json_encode($messages));
             } catch (\Exception $e) {
-                $logger->error('Preview failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                $errorMsg = $e->getMessage();
+                if (str_contains($errorMsg, 'unauthorized_client')) {
+                    $logger->error('Preview failed: Unauthorized client. Please check Domain-Wide Delegation settings in Google Workspace Admin Console.', ['error' => $errorMsg]);
+                } else {
+                    $logger->error('Preview failed', ['error' => $errorMsg, 'trace' => $e->getTraceAsString()]);
+                }
                 return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error']));
             }
         }
