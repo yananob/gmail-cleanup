@@ -38,6 +38,8 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
     $logger = new Logger('gmail-cleanup-http');
     $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
 
+    $logger->info('Request received', ['method' => $method ?? $request->getMethod(), 'uri' => $uri ?? $request->getUri()->getPath()]);
+
     $views = __DIR__ . '/views';
     $cache = '/tmp/cache';
     if (!is_dir($cache)) {
@@ -69,44 +71,65 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
 
     try {
         if ($method === 'GET' && $uri === '/') {
+            $logger->info('Fetching all configs');
             $configs = $configRepository->getAll();
             return $blade->run('index', ['configs' => $configs, 'basePath' => $basePath, 'message' => $message, 'csrfToken' => $csrfToken]);
         }
 
         if ($method === 'GET' && $uri === '/create') {
+            $logger->info('Displaying create form');
             return $blade->run('form', ['basePath' => $basePath, 'csrfToken' => $csrfToken]);
         }
 
         if ($method === 'POST' && $uri === '/store') {
-            if (!verify_csrf_token($body)) return 'Invalid CSRF token';
+            $logger->info('Storing new config');
+            if (!verify_csrf_token($body)) {
+                $logger->warning('Store failed: Invalid CSRF token');
+                return 'Invalid CSRF token';
+            }
             $data = filter_input_data($body);
             $configRepository->create($data);
+            $logger->info('Config created successfully', ['data' => $data]);
             return new Response(302, ['Location' => $basePath . '/?message=' . urlencode('作成しました')]);
         }
 
         if ($method === 'GET' && $uri === '/edit') {
             $id = $queryParams['id'] ?? null;
+            $logger->info('Displaying edit form', ['id' => $id]);
             if (!$id) return 'ID is required';
             $config = $configRepository->find($id);
-            if (!$config) return 'Config not found';
+            if (!$config) {
+                $logger->warning('Config not found for edit', ['id' => $id]);
+                return 'Config not found';
+            }
             return $blade->run('form', ['config' => $config, 'id' => $id, 'basePath' => $basePath, 'csrfToken' => $csrfToken]);
         }
 
         if ($method === 'POST' && $uri === '/update') {
-            if (!verify_csrf_token($body)) return 'Invalid CSRF token';
             $id = $body['id'] ?? null;
+            $logger->info('Updating config', ['id' => $id]);
+            if (!verify_csrf_token($body)) {
+                $logger->warning('Update failed: Invalid CSRF token');
+                return 'Invalid CSRF token';
+            }
             if (!$id) return 'ID is required';
             $data = filter_input_data($body);
             unset($data['id']);
             $configRepository->update((string)$id, $data);
+            $logger->info('Config updated successfully', ['id' => $id]);
             return new Response(302, ['Location' => $basePath . '/?message=' . urlencode('更新しました')]);
         }
 
         if ($method === 'POST' && $uri === '/delete') {
-            if (!verify_csrf_token($body)) return 'Invalid CSRF token';
             $id = $body['id'] ?? null;
+            $logger->info('Deleting config', ['id' => $id]);
+            if (!verify_csrf_token($body)) {
+                $logger->warning('Delete failed: Invalid CSRF token');
+                return 'Invalid CSRF token';
+            }
             if (!$id) return 'ID is required';
             $configRepository->delete((string)$id);
+            $logger->info('Config deleted successfully', ['id' => $id]);
             return new Response(302, ['Location' => $basePath . '/?message=' . urlencode('削除しました')]);
         }
 
@@ -140,6 +163,10 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
             }
         }
     } catch (\Exception $e) {
+        $logger->error('An error occurred in main_http', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
         return 'Error: ' . $e->getMessage();
     }
 
