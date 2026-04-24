@@ -6,12 +6,14 @@ use Google\CloudFunctions\FunctionsFramework;
 use Psr\Http\Message\ServerRequestInterface;
 use CloudEvents\V1\CloudEventInterface;
 use Google\Cloud\Firestore\FirestoreClient;
+use Google\Client;
 use Google\Service\Gmail;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 use App\AppConfig;
 use App\ConfigRepository;
 use App\GmailCleanupHandler;
+use App\GmailService;
 use App\Query;
 use eftec\bladeone\BladeOne;
 use GuzzleHttp\Psr7\Response;
@@ -32,6 +34,9 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
 
     $rootCollection = AppConfig::getFirestoreRootCollection();
     $configRepository = new ConfigRepository($firestore, $rootCollection);
+
+    $logger = new Logger('gmail-cleanup-http');
+    $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
 
     $views = __DIR__ . '/views';
     $cache = '/tmp/cache';
@@ -104,6 +109,36 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
             $configRepository->delete((string)$id);
             return new Response(302, ['Location' => $basePath . '/?message=' . urlencode('削除しました')]);
         }
+
+        if ($method === 'POST' && $uri === '/preview') {
+            if (!verify_csrf_token($body)) {
+                $logger->error('Preview failed: Invalid CSRF token');
+                return new Response(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Invalid CSRF token']));
+            }
+
+            try {
+                // Google Client for Gmail API
+                $client = create_gmail_client();
+                $gmailService = new Gmail($client);
+                $gmailAppService = new GmailService($gmailService);
+
+                $data = filter_input_data($body);
+                $queryBuilder = new Query();
+                $query = $queryBuilder->build($data);
+                $logger->info('Preview request', ['query' => $query]);
+
+                $messages = $gmailAppService->listMessages($query, 100);
+                return new Response(200, ['Content-Type' => 'application/json'], json_encode($messages));
+            } catch (\Exception $e) {
+                $errorMsg = $e->getMessage();
+                if (str_contains($errorMsg, 'unauthorized_client')) {
+                    $logger->error('Preview failed: Unauthorized client. Please check Domain-Wide Delegation settings in Google Workspace Admin Console.', ['error' => $errorMsg]);
+                } else {
+                    $logger->error('Preview failed', ['error' => $errorMsg, 'trace' => $e->getTraceAsString()]);
+                }
+                return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error']));
+            }
+        }
     } catch (\Exception $e) {
         return 'Error: ' . $e->getMessage();
     }
@@ -137,6 +172,38 @@ function verify_csrf_token(array $body): bool
     return hash_equals($_SESSION['csrf_token'], $body['csrf_token']);
 }
 
+/**
+ * Gmail API用の認可済みクライアントを取得します。
+ */
+function create_gmail_client(): Client
+{
+    $client = new Client();
+    $client->setScopes([Gmail::GMAIL_MODIFY]);
+    $client->setAccessType('offline');
+
+    $authConfig = getenv('GOOGLE_API_CLIENT_SECRET');
+    if ($authConfig) {
+        $client->setAuthConfig(json_decode($authConfig, true));
+    }
+
+    $token = getenv('GOOGLE_API_TOKEN');
+    if ($token) {
+        $client->setAccessToken(json_decode($token, true));
+    }
+
+    if ($userEmail = AppConfig::getGmailUserEmail()) {
+        $client->setSubject($userEmail);
+    }
+
+    if ($client->isAccessTokenExpired()) {
+        if ($client->getRefreshToken()) {
+            $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+        }
+    }
+
+    return $client;
+}
+
 
 FunctionsFramework::cloudEvent('main_event', 'main_event');
 function main_event(CloudEventInterface $event): void
@@ -156,9 +223,7 @@ function main_event(CloudEventInterface $event): void
     ]);
 
     // Google Client for Gmail API
-    $client = new Google\Client();
-    $client->setAuthConfig($firestoreConfig);
-    $client->addScope(Gmail::GMAIL_MODIFY);
+    $client = create_gmail_client();
     $service = new Gmail($client);
 
     $rootCollection = AppConfig::getFirestoreRootCollection();

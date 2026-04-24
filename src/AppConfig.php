@@ -50,4 +50,16 @@ class AppConfig
             default => '',
         };
     }
+
+    /**
+     * Gmail APIで操作対象とするユーザーのメールアドレスを取得します。
+     * サービスアカウントを使用する場合、このアドレスへのなりすまし（Impersonation）が行われます。
+     *
+     * @return string|null ユーザーのメールアドレス。
+     */
+    public static function getGmailUserEmail(): ?string
+    {
+        $email = getenv('GMAIL_USER_EMAIL');
+        return $email ?: null;
+    }
 }
