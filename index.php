@@ -118,12 +118,7 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
 
             try {
                 // Google Client for Gmail API
-                $client = new Client();
-                $client->setAuthConfig($firestoreConfig);
-                $client->addScope(Gmail::GMAIL_MODIFY);
-                if ($userEmail = AppConfig::getGmailUserEmail()) {
-                    $client->setSubject($userEmail);
-                }
+                $client = create_gmail_client();
                 $gmailService = new Gmail($client);
                 $gmailAppService = new GmailService($gmailService);
 
@@ -177,6 +172,38 @@ function verify_csrf_token(array $body): bool
     return hash_equals($_SESSION['csrf_token'], $body['csrf_token']);
 }
 
+/**
+ * Gmail API用の認可済みクライアントを取得します。
+ */
+function create_gmail_client(): Client
+{
+    $client = new Client();
+    $client->setScopes([Gmail::GMAIL_MODIFY]);
+    $client->setAccessType('offline');
+
+    $authConfig = getenv('GOOGLE_API_CLIENT_SECRET');
+    if ($authConfig) {
+        $client->setAuthConfig(json_decode($authConfig, true));
+    }
+
+    $token = getenv('GOOGLE_API_TOKEN');
+    if ($token) {
+        $client->setAccessToken(json_decode($token, true));
+    }
+
+    if ($userEmail = AppConfig::getGmailUserEmail()) {
+        $client->setSubject($userEmail);
+    }
+
+    if ($client->isAccessTokenExpired()) {
+        if ($client->getRefreshToken()) {
+            $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+        }
+    }
+
+    return $client;
+}
+
 
 FunctionsFramework::cloudEvent('main_event', 'main_event');
 function main_event(CloudEventInterface $event): void
@@ -196,12 +223,7 @@ function main_event(CloudEventInterface $event): void
     ]);
 
     // Google Client for Gmail API
-    $client = new Google\Client();
-    $client->setAuthConfig($firestoreConfig);
-    $client->addScope(Gmail::GMAIL_MODIFY);
-    if ($userEmail = AppConfig::getGmailUserEmail()) {
-        $client->setSubject($userEmail);
-    }
+    $client = create_gmail_client();
     $service = new Gmail($client);
 
     $rootCollection = AppConfig::getFirestoreRootCollection();
