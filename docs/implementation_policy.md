@@ -47,6 +47,7 @@ Google Cloud PHP クライアントライブラリを使用する場合、JSON �
 ```php
 $config = json_decode(getenv("FIREBASE_SERVICE_ACCOUNT"), true);
 $firestore = new FirestoreClient([
+    "projectId" => $config["project_id"] ?? null,
     "keyFile" => $config
 ]);
 ```

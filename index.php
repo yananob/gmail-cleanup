@@ -29,6 +29,7 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
 
     $firestoreConfig = json_decode($firebaseServiceAccount, true);
     $firestore = new FirestoreClient([
+        'projectId' => $firestoreConfig['project_id'] ?? null,
         'keyFile' => $firestoreConfig
     ]);
 
@@ -38,7 +39,10 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
     $logger = new Logger('gmail-cleanup-http');
     $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
 
-    $logger->info('Request received', ['method' => $method ?? $request->getMethod(), 'uri' => $uri ?? $request->getUri()->getPath()]);
+    $uri = $request->getUri()->getPath();
+    $method = $request->getMethod();
+
+    $logger->info('Request received', ['method' => $method, 'uri' => $uri]);
 
     $views = __DIR__ . '/views';
     $cache = '/tmp/cache';
@@ -48,14 +52,12 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
     $blade = new BladeOne($views, $cache, BladeOne::MODE_AUTO);
     $basePath = AppConfig::getBasePath();
 
-    $uri = $request->getUri()->getPath();
     // Remove basePath from URI for routing if it exists
     if ($basePath !== '' && str_starts_with($uri, $basePath)) {
         $uri = substr($uri, strlen($basePath));
     }
     if ($uri === '') $uri = '/';
 
-    $method = $request->getMethod();
     $queryParams = $request->getQueryParams();
     $body = (array)$request->getParsedBody();
     $message = $queryParams['message'] ?? null;
@@ -246,6 +248,7 @@ function main_event(CloudEventInterface $event): void
 
     $firestoreConfig = json_decode($firebaseServiceAccount, true);
     $firestore = new FirestoreClient([
+        'projectId' => $firestoreConfig['project_id'] ?? null,
         'keyFile' => $firestoreConfig
     ]);
 
