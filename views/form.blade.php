@@ -46,9 +46,103 @@
 
             <div class="d-flex justify-content-between">
                 <a href="{{ $basePath }}/" class="btn btn-secondary">キャンセル</a>
-                <button type="submit" class="btn btn-primary">{{ isset($config) ? '更新する' : '保存する' }}</button>
+                <div>
+                    <button type="button" id="preview-button" class="btn btn-info me-2">プレビュー</button>
+                    <button type="submit" class="btn btn-primary">{{ isset($config) ? '更新する' : '保存する' }}</button>
+                </div>
             </div>
         </form>
     </div>
 </div>
+
+<div id="preview-container" class="mt-4" style="display: none;">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">プレビュー結果 (最新100件)</h5>
+            <button type="button" class="btn-close" id="close-preview"></button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>件名</th>
+                            <th>スニペット</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-results">
+                    </tbody>
+                </table>
+            </div>
+            <div id="preview-empty" class="text-center py-3" style="display: none;">
+                該当するメールは見つかりませんでした。
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('preview-button').addEventListener('click', async function() {
+    const button = this;
+    const form = button.closest('form');
+    const formData = new FormData(form);
+    const container = document.getElementById('preview-container');
+    const resultsTable = document.getElementById('preview-results');
+    const emptyMessage = document.getElementById('preview-empty');
+
+    button.disabled = true;
+    button.textContent = '読み込み中...';
+    container.style.display = 'block';
+    resultsTable.innerHTML = '';
+    emptyMessage.style.display = 'none';
+
+    try {
+        const response = await fetch('{{ $basePath }}/preview', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('プレビューの取得に失敗しました。');
+        }
+
+        const messages = await response.json();
+
+        if (messages.length === 0) {
+            emptyMessage.style.display = 'block';
+        } else {
+            messages.forEach(msg => {
+                const row = document.createElement('tr');
+
+                const dateCell = document.createElement('td');
+                dateCell.className = 'text-nowrap';
+                dateCell.textContent = msg.date;
+                row.appendChild(dateCell);
+
+                const subjectCell = document.createElement('td');
+                subjectCell.textContent = msg.subject;
+                row.appendChild(subjectCell);
+
+                const snippetCell = document.createElement('td');
+                snippetCell.className = 'text-muted small';
+                snippetCell.textContent = msg.snippet;
+                row.appendChild(snippetCell);
+
+                resultsTable.appendChild(row);
+            });
+        }
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        button.disabled = false;
+        button.textContent = 'プレビュー';
+        container.scrollIntoView({ behavior: 'smooth' });
+    }
+});
+
+document.getElementById('close-preview').addEventListener('click', function() {
+    document.getElementById('preview-container').style.display = 'none';
+});
+</script>
 @endsection
