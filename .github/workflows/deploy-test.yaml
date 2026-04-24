@@ -46,7 +46,8 @@ jobs:
       wip_provider_name: 'github-provider'
       runtime: php82
       secrets_config: |-
-        GCLOUD_SERVICE_ACCOUNT
+        GOOGLE_API_CLIENT_SECRET
+        GOOGLE_API_TOKEN
         FIREBASE_SERVICE_ACCOUNT
       # gcs_source_dir: ./public/
       # gcs_bucket_name: XXX-static
