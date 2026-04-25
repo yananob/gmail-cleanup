@@ -22,6 +22,9 @@ use Psr\Http\Message\ResponseInterface;
 FunctionsFramework::http('main_http', 'main_http');
 function main_http(ServerRequestInterface $request): string|ResponseInterface
 {
+    $logger = new Logger('gmail-cleanup-http');
+    $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
+
     $firebaseServiceAccount = getenv('FIREBASE_SERVICE_ACCOUNT');
     if (!$firebaseServiceAccount) {
         return 'FIREBASE_SERVICE_ACCOUNT environment variable is not set.';
@@ -35,9 +38,6 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
 
     $rootCollection = AppConfig::getFirestoreRootCollection();
     $configRepository = new ConfigRepository($firestore, $rootCollection);
-
-    $logger = new Logger('gmail-cleanup-http');
-    $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
 
     $uri = $request->getUri()->getPath();
     $method = $request->getMethod();
@@ -156,12 +156,13 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
                 return new Response(200, ['Content-Type' => 'application/json'], json_encode($messages));
             } catch (\Exception $e) {
                 $errorMsg = $e->getMessage();
-                if (str_contains($errorMsg, 'unauthorized_client')) {
-                    $logger->error('Preview failed: Unauthorized client. Please check Domain-Wide Delegation settings in Google Workspace Admin Console.', ['error' => $errorMsg]);
+                if (str_contains($errorMsg, 'unauthorized_client') || str_contains($errorMsg, 'invalid_grant')) {
+                    $logger->error('Preview failed: Authentication error. If using Domain-Wide Delegation, check Admin Console settings. If using OAuth, your refresh token may be invalid.', ['error' => $errorMsg]);
+                    return new Response(401, ['Content-Type' => 'application/json'], json_encode(['error' => 'Authentication Error: ' . $errorMsg]));
                 } else {
                     $logger->error('Preview failed', ['error' => $errorMsg, 'trace' => $e->getTraceAsString()]);
                 }
-                return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error']));
+                return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error: ' . $errorMsg]));
             }
         }
     } catch (\Exception $e) {
@@ -169,6 +170,7 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
             'message' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
         ]);
+        $logger->error($e->getTraceAsString());
         return 'Error: ' . $e->getMessage();
     }
 
@@ -207,13 +209,20 @@ function verify_csrf_token(array $body): bool
 function create_gmail_client(): Client
 {
     $client = new Client();
-    $client->setScopes([Gmail::GMAIL_MODIFY]);
+    $client->setApplicationName('MyCFApp');
+    $client->setScopes([
+        Gmail::MAIL_GOOGLE_COM,
+        Gmail::GMAIL_MODIFY,
+        Gmail::GMAIL_READONLY,
+    ]);
     $client->setAccessType('offline');
 
     $authConfig = getenv('GOOGLE_API_CLIENT_SECRET');
     if ($authConfig) {
         $client->setAuthConfig(json_decode($authConfig, true));
     }
+    $client->setAccessType('offline');
+    $client->setPrompt('select_account consent');
 
     $token = getenv('GOOGLE_API_TOKEN');
     if ($token) {
@@ -226,7 +235,12 @@ function create_gmail_client(): Client
 
     if ($client->isAccessTokenExpired()) {
         if ($client->getRefreshToken()) {
-            $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+            try {
+                $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+            } catch (\Exception $e) {
+                // Log but don't crash here, as we might be able to recover or use service account
+                error_log('Failed to refresh token: ' . $e->getMessage());
+            }
         }
     }
 

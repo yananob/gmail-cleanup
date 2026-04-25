@@ -6,8 +6,8 @@
     "require": {
         "php": ">= 8.2",
         "google/cloud-functions-framework": "^1.3",
-        "google/cloud-firestore": "^2.0",
-        "google/apiclient": "^2.15",
+        "google/cloud-firestore": "^1.54",
+        "google/apiclient": "^2.0",
         "monolog/monolog": "^3.5",
         "nesbot/carbon": "^3.8",
         "eftec/bladeone": "^4.19"
