@@ -16,7 +16,7 @@
                         <th>To</th>
                         <th>件名</th>
                         <th>ラベル</th>
-                        <th>期限 (date_before)</th>
+                        <th>対象期間 (date_before)</th>
                         <th>操作</th>
                     </tr>
                 </thead>

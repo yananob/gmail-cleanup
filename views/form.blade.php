@@ -39,9 +39,8 @@
             </div>
 
             <div class="mb-3">
-                <label for="date_before" class="form-label">期限 (date_before)</label>
-                <select class="form-select" id="date_before" name="date_before">
-                    <option value="" {{ ($config['date_before'] ?? '') === '' ? 'selected' : '' }}>指定なし</option>
+                <label for="date_before" class="form-label">対象期間 (date_before)</label>
+                <select class="form-select" id="date_before" name="date_before" required>
                     <option value="P1M" {{ ($config['date_before'] ?? '') === 'P1M' ? 'selected' : '' }}>1ヶ月</option>
                     <option value="P3M" {{ ($config['date_before'] ?? '') === 'P3M' ? 'selected' : '' }}>3ヶ月</option>
                     <option value="P6M" {{ ($config['date_before'] ?? '') === 'P6M' ? 'selected' : '' }}>6ヶ月</option>
