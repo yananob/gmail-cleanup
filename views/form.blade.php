@@ -39,9 +39,14 @@
             </div>
 
             <div class="mb-3">
-                <label for="date_before" class="form-label">期限 (date_before)</label>
-                <input type="text" class="form-control" id="date_before" name="date_before" value="{{ $config['date_before'] ?? '' }}" placeholder="例: P1M (1ヶ月), P3M (3ヶ月), P1Y (1年)">
-                <div class="form-text">ISO 8601 期間形式で指定します。</div>
+                <label for="date_before" class="form-label">対象期間 (date_before)</label>
+                <select class="form-select" id="date_before" name="date_before" required>
+                    <option value="P1M" {{ ($config['date_before'] ?? '') === 'P1M' ? 'selected' : '' }}>1ヶ月</option>
+                    <option value="P3M" {{ ($config['date_before'] ?? '') === 'P3M' ? 'selected' : '' }}>3ヶ月</option>
+                    <option value="P6M" {{ ($config['date_before'] ?? '') === 'P6M' ? 'selected' : '' }}>6ヶ月</option>
+                    <option value="P1Y" {{ ($config['date_before'] ?? '') === 'P1Y' ? 'selected' : '' }}>1年</option>
+                </select>
+                <div class="form-text">指定した期間より前のメールを削除対象にします。</div>
             </div>
 
             <div class="d-flex justify-content-between">
