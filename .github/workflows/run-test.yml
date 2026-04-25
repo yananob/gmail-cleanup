@@ -3,11 +3,11 @@ name: Run test
 on:
   pull_request:
     types: [opened, reopened, edited, synchronize]
+    branches-ignore:
+      - main
   push:
     branches:
-      - main
       - test
-
   schedule:
     - cron:  '45 21 * * 5'
   workflow_dispatch:
