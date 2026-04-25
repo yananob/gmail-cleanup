@@ -22,6 +22,9 @@ use Psr\Http\Message\ResponseInterface;
 FunctionsFramework::http('main_http', 'main_http');
 function main_http(ServerRequestInterface $request): string|ResponseInterface
 {
+    $logger = new Logger('gmail-cleanup-http');
+    $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
+
     $firebaseServiceAccount = getenv('FIREBASE_SERVICE_ACCOUNT');
     if (!$firebaseServiceAccount) {
         return 'FIREBASE_SERVICE_ACCOUNT environment variable is not set.';
@@ -29,14 +32,17 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
 
     $firestoreConfig = json_decode($firebaseServiceAccount, true);
     $firestore = new FirestoreClient([
+        'projectId' => $firestoreConfig['project_id'] ?? null,
         'keyFile' => $firestoreConfig
     ]);
 
     $rootCollection = AppConfig::getFirestoreRootCollection();
     $configRepository = new ConfigRepository($firestore, $rootCollection);
 
-    $logger = new Logger('gmail-cleanup-http');
-    $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
+    $uri = $request->getUri()->getPath();
+    $method = $request->getMethod();
+
+    $logger->info('Request received', ['method' => $method, 'uri' => $uri]);
 
     $views = __DIR__ . '/views';
     $cache = '/tmp/cache';
@@ -46,14 +52,12 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
     $blade = new BladeOne($views, $cache, BladeOne::MODE_AUTO);
     $basePath = AppConfig::getBasePath();
 
-    $uri = $request->getUri()->getPath();
     // Remove basePath from URI for routing if it exists
     if ($basePath !== '' && str_starts_with($uri, $basePath)) {
         $uri = substr($uri, strlen($basePath));
     }
     if ($uri === '') $uri = '/';
 
-    $method = $request->getMethod();
     $queryParams = $request->getQueryParams();
     $body = (array)$request->getParsedBody();
     $message = $queryParams['message'] ?? null;
@@ -69,44 +73,65 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
 
     try {
         if ($method === 'GET' && $uri === '/') {
+            $logger->info('Fetching all configs');
             $configs = $configRepository->getAll();
             return $blade->run('index', ['configs' => $configs, 'basePath' => $basePath, 'message' => $message, 'csrfToken' => $csrfToken]);
         }
 
         if ($method === 'GET' && $uri === '/create') {
+            $logger->info('Displaying create form');
             return $blade->run('form', ['basePath' => $basePath, 'csrfToken' => $csrfToken]);
         }
 
         if ($method === 'POST' && $uri === '/store') {
-            if (!verify_csrf_token($body)) return 'Invalid CSRF token';
+            $logger->info('Storing new config');
+            if (!verify_csrf_token($body)) {
+                $logger->warning('Store failed: Invalid CSRF token');
+                return 'Invalid CSRF token';
+            }
             $data = filter_input_data($body);
             $configRepository->create($data);
+            $logger->info('Config created successfully', ['data' => $data]);
             return new Response(302, ['Location' => $basePath . '/?message=' . urlencode('作成しました')]);
         }
 
         if ($method === 'GET' && $uri === '/edit') {
             $id = $queryParams['id'] ?? null;
+            $logger->info('Displaying edit form', ['id' => $id]);
             if (!$id) return 'ID is required';
             $config = $configRepository->find($id);
-            if (!$config) return 'Config not found';
+            if (!$config) {
+                $logger->warning('Config not found for edit', ['id' => $id]);
+                return 'Config not found';
+            }
             return $blade->run('form', ['config' => $config, 'id' => $id, 'basePath' => $basePath, 'csrfToken' => $csrfToken]);
         }
 
         if ($method === 'POST' && $uri === '/update') {
-            if (!verify_csrf_token($body)) return 'Invalid CSRF token';
             $id = $body['id'] ?? null;
+            $logger->info('Updating config', ['id' => $id]);
+            if (!verify_csrf_token($body)) {
+                $logger->warning('Update failed: Invalid CSRF token');
+                return 'Invalid CSRF token';
+            }
             if (!$id) return 'ID is required';
             $data = filter_input_data($body);
             unset($data['id']);
             $configRepository->update((string)$id, $data);
+            $logger->info('Config updated successfully', ['id' => $id]);
             return new Response(302, ['Location' => $basePath . '/?message=' . urlencode('更新しました')]);
         }
 
         if ($method === 'POST' && $uri === '/delete') {
-            if (!verify_csrf_token($body)) return 'Invalid CSRF token';
             $id = $body['id'] ?? null;
+            $logger->info('Deleting config', ['id' => $id]);
+            if (!verify_csrf_token($body)) {
+                $logger->warning('Delete failed: Invalid CSRF token');
+                return 'Invalid CSRF token';
+            }
             if (!$id) return 'ID is required';
             $configRepository->delete((string)$id);
+            $logger->info('Config deleted successfully', ['id' => $id]);
             return new Response(302, ['Location' => $basePath . '/?message=' . urlencode('削除しました')]);
         }
 
@@ -127,19 +152,25 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
                 $query = $queryBuilder->build($data);
                 $logger->info('Preview request', ['query' => $query]);
 
-                $messages = $gmailAppService->listMessages($query, 100);
+                $messages = $gmailAppService->listMessages($query, 20);
                 return new Response(200, ['Content-Type' => 'application/json'], json_encode($messages));
             } catch (\Exception $e) {
                 $errorMsg = $e->getMessage();
-                if (str_contains($errorMsg, 'unauthorized_client')) {
-                    $logger->error('Preview failed: Unauthorized client. Please check Domain-Wide Delegation settings in Google Workspace Admin Console.', ['error' => $errorMsg]);
+                if (str_contains($errorMsg, 'unauthorized_client') || str_contains($errorMsg, 'invalid_grant')) {
+                    $logger->error('Preview failed: Authentication error. If using Domain-Wide Delegation, check Admin Console settings. If using OAuth, your refresh token may be invalid.', ['error' => $errorMsg]);
+                    return new Response(401, ['Content-Type' => 'application/json'], json_encode(['error' => 'Authentication Error: ' . $errorMsg]));
                 } else {
                     $logger->error('Preview failed', ['error' => $errorMsg, 'trace' => $e->getTraceAsString()]);
                 }
-                return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error']));
+                return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Internal Server Error: ' . $errorMsg]));
             }
         }
     } catch (\Exception $e) {
+        $logger->error('An error occurred in main_http', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        $logger->error($e->getTraceAsString());
         return 'Error: ' . $e->getMessage();
     }
 
@@ -178,13 +209,20 @@ function verify_csrf_token(array $body): bool
 function create_gmail_client(): Client
 {
     $client = new Client();
-    $client->setScopes([Gmail::GMAIL_MODIFY]);
+    $client->setApplicationName('MyCFApp');
+    $client->setScopes([
+        Gmail::MAIL_GOOGLE_COM,
+        Gmail::GMAIL_MODIFY,
+        Gmail::GMAIL_READONLY,
+    ]);
     $client->setAccessType('offline');
 
     $authConfig = getenv('GOOGLE_API_CLIENT_SECRET');
     if ($authConfig) {
         $client->setAuthConfig(json_decode($authConfig, true));
     }
+    $client->setAccessType('offline');
+    $client->setPrompt('select_account consent');
 
     $token = getenv('GOOGLE_API_TOKEN');
     if ($token) {
@@ -197,7 +235,12 @@ function create_gmail_client(): Client
 
     if ($client->isAccessTokenExpired()) {
         if ($client->getRefreshToken()) {
-            $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+            try {
+                $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+            } catch (\Exception $e) {
+                // Log but don't crash here, as we might be able to recover or use service account
+                error_log('Failed to refresh token: ' . $e->getMessage());
+            }
         }
     }
 
@@ -219,6 +262,7 @@ function main_event(CloudEventInterface $event): void
 
     $firestoreConfig = json_decode($firebaseServiceAccount, true);
     $firestore = new FirestoreClient([
+        'projectId' => $firestoreConfig['project_id'] ?? null,
         'keyFile' => $firestoreConfig
     ]);
 

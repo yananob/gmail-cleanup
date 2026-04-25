@@ -9,7 +9,7 @@
         <form action="{{ isset($config) ? $basePath . '/update' : $basePath . '/store' }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ $csrfToken }}">
             @if(isset($id))
-                <input type="hidden" name="id" value="{{ $id }}">
+            <input type="hidden" name="id" value="{{ $id }}">
             @endif
 
             <div class="mb-3">
@@ -58,7 +58,7 @@
 <div id="preview-container" class="mt-4" style="display: none;">
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">プレビュー結果 (最新100件)</h5>
+            <h5 class="mb-0">プレビュー結果 (最新20件)</h5>
             <button type="button" class="btn-close" id="close-preview"></button>
         </div>
         <div class="card-body">
@@ -83,66 +83,68 @@
 </div>
 
 <script>
-document.getElementById('preview-button').addEventListener('click', async function() {
-    const button = this;
-    const form = button.closest('form');
-    const formData = new FormData(form);
-    const container = document.getElementById('preview-container');
-    const resultsTable = document.getElementById('preview-results');
-    const emptyMessage = document.getElementById('preview-empty');
+    document.getElementById('preview-button').addEventListener('click', async function() {
+        const button = this;
+        const form = button.closest('form');
+        const formData = new FormData(form);
+        const container = document.getElementById('preview-container');
+        const resultsTable = document.getElementById('preview-results');
+        const emptyMessage = document.getElementById('preview-empty');
 
-    button.disabled = true;
-    button.textContent = '読み込み中...';
-    container.style.display = 'block';
-    resultsTable.innerHTML = '';
-    emptyMessage.style.display = 'none';
+        button.disabled = true;
+        button.textContent = '読み込み中...';
+        container.style.display = 'block';
+        resultsTable.innerHTML = '';
+        emptyMessage.style.display = 'none';
 
-    try {
-        const response = await fetch('{{ $basePath }}/preview', {
-            method: 'POST',
-            body: formData
-        });
+        try {
+            const response = await fetch('{{ $basePath }}/preview', {
+                method: 'POST',
+                body: formData
+            });
 
-        if (!response.ok) {
-            throw new Error('プレビューの取得に失敗しました。');
-        }
+            if (!response.ok) {
+                throw new Error('プレビューの取得に失敗しました。');
+            }
 
-        const messages = await response.json();
+            const messages = await response.json();
 
-        if (messages.length === 0) {
-            emptyMessage.style.display = 'block';
-        } else {
-            messages.forEach(msg => {
-                const row = document.createElement('tr');
+            if (messages.length === 0) {
+                emptyMessage.style.display = 'block';
+            } else {
+                messages.forEach(msg => {
+                    const row = document.createElement('tr');
 
-                const dateCell = document.createElement('td');
-                dateCell.className = 'text-nowrap';
-                dateCell.textContent = msg.date;
-                row.appendChild(dateCell);
+                    const dateCell = document.createElement('td');
+                    dateCell.className = 'text-nowrap';
+                    dateCell.textContent = msg.date;
+                    row.appendChild(dateCell);
 
-                const subjectCell = document.createElement('td');
-                subjectCell.textContent = msg.subject;
-                row.appendChild(subjectCell);
+                    const subjectCell = document.createElement('td');
+                    subjectCell.textContent = msg.subject;
+                    row.appendChild(subjectCell);
 
-                const snippetCell = document.createElement('td');
-                snippetCell.className = 'text-muted small';
-                snippetCell.textContent = msg.snippet;
-                row.appendChild(snippetCell);
+                    const snippetCell = document.createElement('td');
+                    snippetCell.className = 'text-muted small';
+                    snippetCell.textContent = msg.snippet;
+                    row.appendChild(snippetCell);
 
-                resultsTable.appendChild(row);
+                    resultsTable.appendChild(row);
+                });
+            }
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            button.disabled = false;
+            button.textContent = 'プレビュー';
+            container.scrollIntoView({
+                behavior: 'smooth'
             });
         }
-    } catch (error) {
-        alert(error.message);
-    } finally {
-        button.disabled = false;
-        button.textContent = 'プレビュー';
-        container.scrollIntoView({ behavior: 'smooth' });
-    }
-});
+    });
 
-document.getElementById('close-preview').addEventListener('click', function() {
-    document.getElementById('preview-container').style.display = 'none';
-});
+    document.getElementById('close-preview').addEventListener('click', function() {
+        document.getElementById('preview-container').style.display = 'none';
+    });
 </script>
 @endsection
