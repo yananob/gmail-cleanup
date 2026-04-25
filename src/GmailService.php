@@ -23,7 +23,7 @@ class GmailService
      * @param int $maxResults 最大取得件数。
      * @return array<int, array{id: string, snippet: string, subject: string, date: string}> メッセージの詳細リスト。
      */
-    public function listMessages(string $query, int $maxResults = 100): array
+    public function listMessages(string $query, int $maxResults = 20): array
     {
         $user = 'me';
         $params = [

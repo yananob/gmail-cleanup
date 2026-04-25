@@ -152,7 +152,7 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
                 $query = $queryBuilder->build($data);
                 $logger->info('Preview request', ['query' => $query]);
 
-                $messages = $gmailAppService->listMessages($query, 100);
+                $messages = $gmailAppService->listMessages($query, 20);
                 return new Response(200, ['Content-Type' => 'application/json'], json_encode($messages));
             } catch (\Exception $e) {
                 $errorMsg = $e->getMessage();
