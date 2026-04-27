@@ -12,7 +12,10 @@ class RequestHelper
      */
     public function filterInputData(array $data): array
     {
-        $allowedKeys = ['keyword', 'from', 'to', 'subject', 'label', 'date_before'];
+        $allowedKeys = [
+            'keyword', 'from', 'to', 'subject', 'label', 'date_before',
+            'forward_to', 'forward_days', 'mark_as_read', 'is_trash', 'only_unread'
+        ];
         $filtered = [];
         foreach ($allowedKeys as $key) {
             if (isset($data[$key]) && $data[$key] !== '' && $data[$key] !== null) {

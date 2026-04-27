@@ -39,6 +39,10 @@ final class Query
             $parts[] = 'label:' . $target['label'];
         }
 
+        if (!empty($target['only_unread'])) {
+            $parts[] = 'is:unread';
+        }
+
         if (!empty($target['date_before'])) {
             // 現在の日時から指定された期間を引いた日付を計算 (例: P30D -> 30日前)
             $targetDate = Carbon::now()->sub($target['date_before'])->format('Y/m/d');

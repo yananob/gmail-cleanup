@@ -39,6 +39,15 @@
             </div>
 
             <div class="mb-3">
+                <label class="form-label">条件オプション</label>
+                <div class="form-check">
+                    <input type="hidden" name="only_unread" value="0">
+                    <input class="form-check-input" type="checkbox" id="only_unread" name="only_unread" value="1" {{ !empty($config['only_unread']) ? 'checked' : '' }}>
+                    <label class="form-check-label" for="only_unread">未読メールのみ対象</label>
+                </div>
+            </div>
+
+            <div class="mb-3">
                 <label for="date_before" class="form-label">対象期間 (date_before)</label>
                 <select class="form-select" id="date_before" name="date_before" required>
                     <option value="P1M" {{ ($config['date_before'] ?? '') === 'P1M' ? 'selected' : '' }}>1ヶ月</option>
@@ -47,6 +56,44 @@
                     <option value="P1Y" {{ ($config['date_before'] ?? '') === 'P1Y' ? 'selected' : '' }}>1年</option>
                 </select>
                 <div class="form-text">指定した期間より前のメールを削除対象にします。</div>
+            </div>
+
+            <hr>
+
+            <div class="mb-3">
+                <label for="forward_to" class="form-label">転送先メールアドレス</label>
+                <input type="email" class="form-control" id="forward_to" name="forward_to" value="{{ $config['forward_to'] ?? '' }}" placeholder="例: user@example.com">
+                <div class="form-text">空欄の場合は転送されません。</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">転送を実行する曜日</label>
+                <div class="d-flex flex-wrap gap-3">
+                    @php
+                        $days = ['日', '月', '火', '水', '木', '金', '土'];
+                        $forwardDays = $config['forward_days'] ?? [];
+                    @endphp
+                    @foreach($days as $index => $day)
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="forward_days[]" value="{{ $index }}" id="day_{{ $index }}" {{ in_array((string)$index, (array)$forwardDays) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="day_{{ $index }}">{{ $day }}</label>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">実行アクション</label>
+                <div class="form-check">
+                    <input type="hidden" name="mark_as_read" value="0">
+                    <input class="form-check-input" type="checkbox" id="mark_as_read" name="mark_as_read" value="1" {{ !empty($config['mark_as_read']) ? 'checked' : '' }}>
+                    <label class="form-check-label" for="mark_as_read">処理後に既読にする</label>
+                </div>
+                <div class="form-check">
+                    <input type="hidden" name="is_trash" value="0">
+                    <input class="form-check-input" type="checkbox" id="is_trash" name="is_trash" value="1" {{ !isset($config['is_trash']) || !empty($config['is_trash']) ? 'checked' : '' }}>
+                    <label class="form-check-label" for="is_trash">処理後にゴミ箱へ移動する</label>
+                </div>
             </div>
 
             <div class="d-flex justify-content-between">

@@ -15,8 +15,9 @@
                         <th>From</th>
                         <th>To</th>
                         <th>件名</th>
-                        <th>ラベル</th>
-                        <th>対象期間 (date_before)</th>
+                        <th>ラベル/未読</th>
+                        <th>対象期間</th>
+                        <th>転送/既読/削除</th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -27,8 +28,26 @@
                         <td>{{ $config['data']['from'] ?? '-' }}</td>
                         <td>{{ $config['data']['to'] ?? '-' }}</td>
                         <td>{{ $config['data']['subject'] ?? '-' }}</td>
-                        <td>{{ $config['data']['label'] ?? '-' }}</td>
+                        <td>
+                            {{ $config['data']['label'] ?? '-' }}
+                            @if(!empty($config['data']['only_unread']))
+                                <br><span class="badge bg-info text-dark">未読のみ</span>
+                            @endif
+                        </td>
                         <td>{{ $config['data']['date_before'] ?? '-' }}</td>
+                        <td>
+                            @if(!empty($config['data']['forward_to']))
+                                <span class="badge bg-success">転送: {{ $config['data']['forward_to'] }}</span>
+                                @if(!empty($config['data']['forward_days']))
+                                    <br><small class="text-muted">曜日: {{ implode(',', array_map(fn($d) => ['日','月','火','水','木','金','土'][$d], $config['data']['forward_days'])) }}</small>
+                                @endif
+                            @else
+                                <span class="text-muted">なし</span>
+                            @endif
+                            <br>
+                            <span class="badge {{ !empty($config['data']['mark_as_read']) ? 'bg-primary' : 'bg-secondary' }}">既読: {{ !empty($config['data']['mark_as_read']) ? 'ON' : 'OFF' }}</span>
+                            <span class="badge {{ !isset($config['data']['is_trash']) || !empty($config['data']['is_trash']) ? 'bg-danger' : 'bg-secondary' }}">削除: {{ !isset($config['data']['is_trash']) || !empty($config['data']['is_trash']) ? 'ON' : 'OFF' }}</span>
+                        </td>
                         <td>
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ $basePath }}/edit?id={{ $config['id'] }}" class="btn btn-outline-secondary">編集</a>

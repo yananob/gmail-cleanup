@@ -17,17 +17,18 @@ final class QueryTest extends TestCase
         $date_p6m = Carbon::now()->sub('P6M')->format('Y/m/d');
 
         return [
-            // message => [keyword, from, to, subject, label, date_before, expected]
-            "keyword + before 1M" => ["hogehoge", null, null, null, null, "P1M", "hogehoge before:" . $date_p1m],
-            "from + subject" => [null, "me", null, "error alert", null, null, "from:me subject:error alert"],
-            "to + before 2M" => [null, null, "hogeo@hoge.com", null, null, "P2M", "to:hogeo@hoge.com before:" . $date_p2m],
-            "label + before 3M" => [null, null, null, null, "mailmag", "P3M", "label:mailmag before:" . $date_p3m],
-            "before 6M" => [null, null, null, null, null, "P6M", "before:" . $date_p6m],
+            // message => [keyword, from, to, subject, label, only_unread, date_before, expected]
+            "keyword + before 1M" => ["hogehoge", null, null, null, null, null, "P1M", "hogehoge before:" . $date_p1m],
+            "from + subject" => [null, "me", null, "error alert", null, null, null, "from:me subject:error alert"],
+            "to + before 2M" => [null, null, "hogeo@hoge.com", null, null, null, "P2M", "to:hogeo@hoge.com before:" . $date_p2m],
+            "label + before 3M" => [null, null, null, null, "mailmag", null, "P3M", "label:mailmag before:" . $date_p3m],
+            "before 6M" => [null, null, null, null, null, null, "P6M", "before:" . $date_p6m],
+            "unread + label" => [null, null, null, null, "newsletter", true, null, "label:newsletter is:unread"],
         ];
     }
 
     #[DataProvider('buildDataProvider')]
-    public function testBuild($keyword, $from, $to, $subject, $label, $date_before, $expected): void
+    public function testBuild($keyword, $from, $to, $subject, $label, $only_unread, $date_before, $expected): void
     {
         $target = [];
         if (!is_null($keyword)) {
@@ -44,6 +45,9 @@ final class QueryTest extends TestCase
         }
         if (!is_null($label)) {
             $target["label"] = $label;
+        }
+        if (!is_null($only_unread)) {
+            $target["only_unread"] = $only_unread;
         }
         if (!is_null($date_before)) {
             $target["date_before"] = $date_before;

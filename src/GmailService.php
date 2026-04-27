@@ -72,4 +72,103 @@ class GmailService
             throw $e;
         }
     }
+
+    /**
+     * メッセージを既読にします（UNREADラベルを削除）。
+     *
+     * @param string $messageId
+     * @return void
+     */
+    public function markAsRead(string $messageId): void
+    {
+        $user = 'me';
+        $mods = new \Google\Service\Gmail\ModifyMessageRequest();
+        $mods->setRemoveLabelIds(['UNREAD']);
+        $this->service->users_messages->modify($user, $messageId, $mods);
+    }
+
+    /**
+     * メッセージを転送します。
+     *
+     * @param string $messageId
+     * @param string $to
+     * @return void
+     */
+    public function forward(string $messageId, string $to): void
+    {
+        $user = 'me';
+        $msg = $this->service->users_messages->get($user, $messageId);
+        $payload = $msg->getPayload();
+        $headers = $payload->getHeaders();
+
+        $subject = '';
+        foreach ($headers as $header) {
+            if (strtolower($header->getName()) === 'subject') {
+                $subject = $header->getValue();
+                break;
+            }
+        }
+
+        $body = $this->extractBody($payload);
+        if (empty($body)) {
+            $body = $msg->getSnippet();
+        }
+
+        $newMessage = new \Google\Service\Gmail\Message();
+        $encodedSubject = mb_encode_mimeheader("Fwd: $subject", 'UTF-8', 'B');
+        $rawMessageString = "To: $to\r\n";
+        $rawMessageString .= "Subject: $encodedSubject\r\n";
+        $rawMessageString .= "Content-Type: text/plain; charset=utf-8\r\n";
+        $rawMessageString .= "Content-Transfer-Encoding: base64\r\n\r\n";
+        $rawMessageString .= base64_encode($body);
+
+        $encodedMessage = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($rawMessageString));
+        $newMessage->setRaw($encodedMessage);
+        $this->service->users_messages->send($user, $newMessage);
+    }
+
+    /**
+     * メッセージをゴミ箱に移動します。
+     *
+     * @param string $messageId
+     * @return void
+     */
+    public function trash(string $messageId): void
+    {
+        $this->service->users_messages->trash('me', $messageId);
+    }
+
+    /**
+     * メッセージの詳細を取得します。
+     *
+     * @param string $messageId
+     * @return \Google\Service\Gmail\Message
+     */
+    public function get(string $messageId): \Google\Service\Gmail\Message
+    {
+        return $this->service->users_messages->get('me', $messageId);
+    }
+
+    /**
+     * ペイロードから本文を抽出します。
+     *
+     * @param \Google\Service\Gmail\MessagePart $part
+     * @return string
+     */
+    private function extractBody(\Google\Service\Gmail\MessagePart $part): string
+    {
+        if ($part->getMimeType() === 'text/plain' && $part->getBody()->getData()) {
+            return base64_decode(str_replace(['-', '_'], ['+', '/'], $part->getBody()->getData()));
+        }
+
+        $parts = $part->getParts();
+        if ($parts) {
+            foreach ($parts as $partItem) {
+                $body = $this->extractBody($partItem);
+                if ($body) return $body;
+            }
+        }
+
+        return '';
+    }
 }

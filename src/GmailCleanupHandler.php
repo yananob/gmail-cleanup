@@ -5,6 +5,7 @@ namespace App;
 use CloudEvents\V1\CloudEventInterface;
 use Google\Service\Gmail;
 use Psr\Log\LoggerInterface;
+use Carbon\Carbon;
 
 /**
  * Gmailの整理処理を規定するハンドラクラス。
@@ -27,7 +28,7 @@ class GmailCleanupHandler
     ) {}
 
     /**
-     * CloudEventを処理し、Firestoreから取得したターゲットに基づいてメールを削除（ゴミ箱へ移動）します。
+     * CloudEventを処理し、Firestoreから取得したターゲットに基づいてメールを処理します。
      *
      * @param CloudEventInterface $event
      * @return void
@@ -42,11 +43,15 @@ class GmailCleanupHandler
             return;
         }
 
+        $gmailAppService = new GmailService($this->service);
+        $currentDayOfWeek = Carbon::now()->dayOfWeek; // 0 (Sun) - 6 (Sat)
+
         foreach ($targets as $target) {
             $this->logger->info($this->filterLogMessage("Processing target: " . json_encode($target)));
+            $searchQuery = $this->query->build($target);
             $params = [
                 "maxResults" => 20,
-                "q" => $this->query->build($target),
+                "q" => $searchQuery,
                 "includeSpamTrash" => false,
             ];
             $this->logger->info($this->filterLogMessage("Listing messages: " . json_encode($params)));
@@ -60,11 +65,38 @@ class GmailCleanupHandler
                     continue;
                 }
 
-                $this->logger->info("Deleting messages:");
                 foreach ($messages as $message) {
                     $messageDetail = $this->service->users_messages->get($user, $message->id);
-                    $this->logger->info($this->filterLogMessage("[{$message->id}] {$messageDetail->snippet}"));
-                    $this->service->users_messages->trash($user, $message->id);
+                    $this->logger->info($this->filterLogMessage("Processing [{$message->id}] {$messageDetail->snippet}"));
+
+                    // 1. Forward
+                    $forwardTo = $target['forward_to'] ?? null;
+                    $forwardDays = $target['forward_days'] ?? null;
+                    if ($forwardTo) {
+                        $shouldForward = true;
+                        if ($forwardDays !== null) {
+                            $shouldForward = in_array((string)$currentDayOfWeek, (array)$forwardDays);
+                        }
+
+                        if ($shouldForward) {
+                            $this->logger->info("Forwarding to $forwardTo");
+                            $gmailAppService->forward($message->id, $forwardTo);
+                        } else {
+                            $this->logger->info("Skipping forward (day $currentDayOfWeek not in configured days)");
+                        }
+                    }
+
+                    // 2. Mark as read
+                    if (!empty($target['mark_as_read'])) {
+                        $this->logger->info("Marking as read");
+                        $gmailAppService->markAsRead($message->id);
+                    }
+
+                    // 3. Trash
+                    if (!isset($target['is_trash']) || !empty($target['is_trash'])) {
+                        $this->logger->info("Moving to trash");
+                        $this->service->users_messages->trash($user, $message->id);
+                    }
                 }
             } catch (\Exception $e) {
                 $this->logger->error("Error processing target: " . $e->getMessage());
