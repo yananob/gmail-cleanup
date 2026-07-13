@@ -61,34 +61,3 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
 
     return $controller->handle($request);
 }
-
-FunctionsFramework::cloudEvent('main_event', 'main_event');
-function main_event(CloudEventInterface $event): void
-{
-    $logger = new Logger('gmail-cleanup');
-    $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
-
-    $firebaseServiceAccount = getenv('FIREBASE_SERVICE_ACCOUNT');
-    if (!$firebaseServiceAccount) {
-        $logger->error('FIREBASE_SERVICE_ACCOUNT environment variable is not set.');
-        return;
-    }
-
-    $firestoreConfig = json_decode($firebaseServiceAccount, true);
-    $firestore = new FirestoreClient([
-        'projectId' => $firestoreConfig['project_id'] ?? null,
-        'keyFile' => $firestoreConfig
-    ]);
-
-    // Google Client for Gmail API
-    $clientFactory = new GmailClientFactory();
-    $client = $clientFactory->create();
-    $service = new Gmail($client);
-
-    $rootCollection = AppConfig::getFirestoreRootCollection();
-    $configRepository = new ConfigRepository($firestore, $rootCollection);
-    $query = new Query();
-
-    $handler = new GmailCleanupHandler($logger, $service, $query, $configRepository);
-    $handler->handle($event);
-}

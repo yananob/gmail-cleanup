@@ -4,7 +4,13 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">削除ルール一覧</h5>
-        <a href="{{ $basePath }}/create" class="btn btn-primary btn-sm">新規作成</a>
+        <div class="d-flex gap-2">
+            <form action="{{ $basePath }}/run-cleanup" method="POST" onsubmit="return confirm('一括削除を実行しますか？');">
+                <input type="hidden" name="csrf_token" value="{{ $csrfToken }}">
+                <button type="submit" class="btn btn-outline-primary btn-sm">一括実行</button>
+            </form>
+            <a href="{{ $basePath }}/create" class="btn btn-primary btn-sm">新規作成</a>
+        </div>
     </div>
     <div class="card-body">
         <div class="table-responsive">

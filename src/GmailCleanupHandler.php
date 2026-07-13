@@ -29,10 +29,10 @@ class GmailCleanupHandler
     /**
      * CloudEventを処理し、Firestoreから取得したターゲットに基づいてメールを削除（ゴミ箱へ移動）します。
      *
-     * @param CloudEventInterface $event
+     * @param CloudEventInterface|null $event
      * @return void
      */
-    public function handle(CloudEventInterface $event): void
+    public function handle(?CloudEventInterface $event = null): void
     {
         $user = 'me';
         $targets = $this->configRepository->getTargets();

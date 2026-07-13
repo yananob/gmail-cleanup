@@ -128,4 +128,52 @@ class ControllerTest extends TestCase
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(302, $response->getStatusCode());
     }
+
+    public function testRunCleanupAction(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getPath')->willReturn('/run-cleanup');
+        $request->method('getUri')->willReturn($uri);
+        $request->method('getMethod')->willReturn('POST');
+
+        $_SESSION['csrf_token'] = 'token';
+        $request->method('getParsedBody')->willReturn(['csrf_token' => 'token']);
+
+        $client = $this->createMock(Client::class);
+        $this->gmailClientFactory->method('create')->willReturn($client);
+
+        // We expect handle to be called.
+        // Since we can't easily mock GmailCleanupHandler (it's instantiated with 'new' in Controller),
+        // this test might fail if it tries to do real things.
+        // However, GmailCleanupHandler depends on $service (Gmail), which we can try to mock.
+        // In Controller.php: $service = new Gmail($client);
+
+        $this->configRepository->method('getTargets')->willReturn([]);
+
+        $response = $this->controller->handle($request);
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(302, $response->getStatusCode());
+        $this->assertStringContainsString('/?message=', (string)$response->getHeaderLine('Location'));
+    }
+
+    public function testRunCleanupActionWithAuthorizationHeader(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getPath')->willReturn('/run-cleanup');
+        $request->method('getUri')->willReturn($uri);
+        $request->method('getMethod')->willReturn('POST');
+        $request->method('hasHeader')->with('Authorization')->willReturn(true);
+        $request->method('getParsedBody')->willReturn([]); // No CSRF token
+
+        $client = $this->createMock(Client::class);
+        $this->gmailClientFactory->method('create')->willReturn($client);
+        $this->configRepository->method('getTargets')->willReturn([]);
+
+        $response = $this->controller->handle($request);
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(302, $response->getStatusCode());
+        $this->assertStringContainsString('/?message=', (string)$response->getHeaderLine('Location'));
+    }
 }

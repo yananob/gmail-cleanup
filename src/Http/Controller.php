@@ -6,6 +6,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use App\ConfigRepository;
+use App\GmailCleanupHandler;
 use App\GmailService;
 use App\Query;
 use eftec\bladeone\BladeOne;
@@ -123,6 +124,25 @@ class Controller
                 $this->configRepository->delete((string)$id);
                 $this->logger->info('Config deleted successfully', ['id' => $id]);
                 return new Response(302, ['Location' => $this->basePath . '/?message=' . urlencode('削除しました')]);
+            }
+
+            if ($method === 'POST' && $uri === '/run-cleanup') {
+                $this->logger->info('Running cleanup task');
+                $isAutomated = $request->hasHeader('Authorization');
+                if (!$isAutomated && !$this->requestHelper->verifyCsrfToken($body)) {
+                    $this->logger->warning('Run cleanup failed: Invalid CSRF token and no Authorization header');
+                    return 'Invalid CSRF token';
+                }
+
+                $client = $this->gmailClientFactory->create();
+                $service = new Gmail($client);
+                $query = new Query();
+
+                $handler = new GmailCleanupHandler($this->logger, $service, $query, $this->configRepository);
+                $handler->handle();
+
+                $this->logger->info('Manual cleanup finished');
+                return new Response(302, ['Location' => $this->basePath . '/?message=' . urlencode('一括削除を実行しました')]);
             }
 
             if ($method === 'POST' && $uri === '/preview') {
