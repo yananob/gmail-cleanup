@@ -128,9 +128,10 @@ class Controller
 
             if ($method === 'POST' && $uri === '/run-cleanup') {
                 $this->logger->info('Running cleanup task');
-                $isAutomated = $request->hasHeader('Authorization');
+                $authHeader = $request->getHeaderLine('Authorization');
+                $isAutomated = str_starts_with($authHeader, 'Bearer ');
                 if (!$isAutomated && !$this->requestHelper->verifyCsrfToken($body)) {
-                    $this->logger->warning('Run cleanup failed: Invalid CSRF token and no Authorization header');
+                    $this->logger->warning('Run cleanup failed: Invalid CSRF token and no valid Authorization header');
                     return 'Invalid CSRF token';
                 }
 

@@ -12,8 +12,7 @@
 - **データベース**: Google Cloud Firestore (Native Mode)
 - **ビュー**: BladeOne を使用してテンプレートを描画します。
 - **エントリポイント (`index.php`)**:
-  - `main_http`: HTTPリクエストを処理します。
-  - `main_event`: Pub/Sub などのイベントを処理します。
+  - `main_http`: HTTPリクエストを処理します（GUI および 一括削除タスク）。
 
 ---
 

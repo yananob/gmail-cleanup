@@ -24,7 +24,7 @@
 - **ランタイム**：PHP 8.2 以上
 - **プラットフォーム**：Google Cloud Functions
 - **データベース**：Google Cloud Firestore (Native Mode)
-- **トリガー**：Cloud Pub/Sub イベント（定期実行用）
+- **トリガー**：HTTP リクエスト（GUI、および Cloud Scheduler 等による定期実行）
 
 ### 削除処理の詳細
 

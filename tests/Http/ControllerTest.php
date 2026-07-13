@@ -164,7 +164,7 @@ class ControllerTest extends TestCase
         $uri->method('getPath')->willReturn('/run-cleanup');
         $request->method('getUri')->willReturn($uri);
         $request->method('getMethod')->willReturn('POST');
-        $request->method('hasHeader')->with('Authorization')->willReturn(true);
+        $request->method('getHeaderLine')->with('Authorization')->willReturn('Bearer token');
         $request->method('getParsedBody')->willReturn([]); // No CSRF token
 
         $client = $this->createMock(Client::class);

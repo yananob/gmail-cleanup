@@ -4,15 +4,11 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use Google\CloudFunctions\FunctionsFramework;
 use Psr\Http\Message\ServerRequestInterface;
-use CloudEvents\V1\CloudEventInterface;
 use Google\Cloud\Firestore\FirestoreClient;
-use Google\Service\Gmail;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 use App\AppConfig;
 use App\ConfigRepository;
-use App\GmailCleanupHandler;
-use App\Query;
 use eftec\bladeone\BladeOne;
 use Psr\Http\Message\ResponseInterface;
 use App\Http\Controller;
