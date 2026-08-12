@@ -8,8 +8,8 @@ echo "Running PHPStan..."
 if [ -f "./tests/secrets.sh" ]; then
     echo "Exporting secrets..."
     source ./tests/secrets.sh
-    if [ -d "./_cf-common/test" ] && [ ${#SECRETS[@]} -gt 0 ]; then
-        source ./_cf-common/test/export_secrets.sh "${SECRETS[@]}"
+    if [ -d "./_myapps-common/test" ] && [ ${#SECRETS[@]} -gt 0 ]; then
+        source ./_myapps-common/test/export_secrets.sh "${SECRETS[@]}"
     fi
 fi
 
@@ -17,6 +17,6 @@ fi
 echo "Running PHPUnit..."
 ./vendor/bin/phpunit tests/
 
-if [ -f "./tests/secrets.sh" ] && [ -d "./_cf-common/test" ] && [ ${#SECRETS[@]} -gt 0 ]; then
-    source ./_cf-common/test/unset_secrets.sh "${SECRETS[@]}"
+if [ -f "./tests/secrets.sh" ] && [ -d "./_myapps-common/test" ] && [ ${#SECRETS[@]} -gt 0 ]; then
+    source ./_myapps-common/test/unset_secrets.sh "${SECRETS[@]}"
 fi
