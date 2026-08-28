@@ -15,7 +15,7 @@ class RequestHelper
         $allowedKeys = ['keyword', 'from', 'to', 'subject', 'label', 'date_before'];
         $filtered = [];
         foreach ($allowedKeys as $key) {
-            if (isset($data[$key]) && $data[$key] !== '' && $data[$key] !== null) {
+            if (isset($data[$key]) && $data[$key] !== '') {
                 $filtered[$key] = $data[$key];
             }
         }

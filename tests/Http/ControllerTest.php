@@ -128,4 +128,59 @@ class ControllerTest extends TestCase
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(302, $response->getStatusCode());
     }
+
+    public function testFiltersIndexAction(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getPath')->willReturn('/filters');
+        $request->method('getUri')->willReturn($uri);
+        $request->method('getMethod')->willReturn('GET');
+        $request->method('getQueryParams')->willReturn([]);
+
+        $clientMock = $this->createMock(Client::class);
+        $gmailMock = $this->createMock(Gmail::class);
+        $usersSettingsFiltersMock = $this->createMock(\Google\Service\Gmail\Resource\UsersSettingsFilters::class);
+        $listResponse = new \Google\Service\Gmail\ListFiltersResponse();
+        $listResponse->setFilter([]);
+        $usersSettingsFiltersMock->method('listUsersSettingsFilters')->willReturn($listResponse);
+        $gmailMock->users_settings_filters = $usersSettingsFiltersMock;
+
+        $this->gmailClientFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($clientMock);
+        $this->gmailClientFactory->expects($this->once())
+            ->method('createGmailService')
+            ->with($clientMock)
+            ->willReturn($gmailMock);
+
+        $this->blade->expects($this->once())
+            ->method('run')
+            ->with('filters_index', $this->callback(function($args) {
+                return array_key_exists('filters', $args) && array_key_exists('csrfToken', $args);
+            }))
+            ->willReturn('filters index html');
+
+        $response = $this->controller->handle($request);
+        $this->assertEquals('filters index html', $response);
+    }
+
+    public function testFiltersCreateAction(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getPath')->willReturn('/filters/create');
+        $request->method('getUri')->willReturn($uri);
+        $request->method('getMethod')->willReturn('GET');
+
+        $this->blade->expects($this->once())
+            ->method('run')
+            ->with('filters_form', $this->callback(function($args) {
+                return array_key_exists('csrfToken', $args);
+            }))
+            ->willReturn('filters form html');
+
+        $response = $this->controller->handle($request);
+        $this->assertEquals('filters form html', $response);
+    }
 }

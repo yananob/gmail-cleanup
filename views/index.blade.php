@@ -1,4 +1,4 @@
-@extends('layout')
+@extends('layout', ['activeTab' => 'cleanup'])
 
 @section('content')
 <div class="card">
