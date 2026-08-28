@@ -202,6 +202,59 @@ class Controller
                 ]);
             }
 
+            if ($method === 'POST' && $uri === '/filters/preview') {
+                if (!$this->requestHelper->verifyCsrfToken($body)) {
+                    $this->logger->error('Filter preview failed: Invalid CSRF token');
+                    return new Response(403, ['Content-Type' => 'application/json'], (string)json_encode(['error' => 'Invalid CSRF token']));
+                }
+
+                try {
+                    $client = $this->gmailClientFactory->create();
+                    $gmailService = $this->gmailClientFactory->createGmailService($client);
+                    $gmailAppService = new GmailService($gmailService);
+
+                    $queryParts = [];
+                    if (!empty($body['from'])) {
+                        $queryParts[] = 'from:' . trim((string)$body['from']);
+                    }
+                    if (!empty($body['to'])) {
+                        $queryParts[] = 'to:' . trim((string)$body['to']);
+                    }
+                    if (!empty($body['subject'])) {
+                        $queryParts[] = 'subject:' . trim((string)$body['subject']);
+                    }
+                    if (!empty($body['hasAttachment'])) {
+                        $queryParts[] = 'has:attachment';
+                    }
+                    if (!empty($body['query'])) {
+                        $queryParts[] = trim((string)$body['query']);
+                    }
+                    if (!empty($body['negatedQuery'])) {
+                        $negated = trim((string)$body['negatedQuery']);
+                        if (str_contains($negated, ' ')) {
+                            $queryParts[] = '-{' . $negated . '}';
+                        } else {
+                            $queryParts[] = '-' . $negated;
+                        }
+                    }
+
+                    $query = implode(' ', $queryParts);
+                    $this->logger->info('Filter preview request', ['query' => $query]);
+
+                    $messages = $gmailAppService->listMessages($query, 20);
+                    return new Response(200, ['Content-Type' => 'application/json'], (string)json_encode($messages));
+                } catch (\Exception $e) {
+                    $errorMsg = $e->getMessage();
+                    if (str_contains($errorMsg, 'unauthorized_client') || str_contains($errorMsg, 'invalid_grant')) {
+                        $this->logger->error('Filter preview failed: Authentication error', ['error' => $errorMsg]);
+                        return new Response(401, ['Content-Type' => 'application/json'], (string)json_encode(['error' => 'Authentication Error: ' . $errorMsg]));
+                    } else {
+                        $this->logger->error('Filter preview failed', ['error' => $errorMsg, 'trace' => $e->getTraceAsString()]);
+                    }
+                    return new Response(500, ['Content-Type' => 'application/json'], (string)json_encode(['error' => 'Internal Server Error: ' . $errorMsg]));
+                }
+            }
+
             if ($method === 'POST' && $uri === '/filters/store') {
                 $this->logger->info('Storing new Gmail filter');
                 if (!$this->requestHelper->verifyCsrfToken($body)) {
@@ -222,13 +275,13 @@ class Controller
                 if (!empty($body['hasAttachment'])) $criteria['hasAttachment'] = true;
 
                 $action = [];
-                if (!empty($body['addLabel'])) {
-                    $labels = array_map('trim', explode(',', (string)$body['addLabel']));
-                    $action['addLabelIds'] = array_values(array_filter($labels));
+                $addLabels = $this->extractLabels($body['addLabel'] ?? null);
+                if (!empty($addLabels)) {
+                    $action['addLabelIds'] = $addLabels;
                 }
-                if (!empty($body['removeLabel'])) {
-                    $labels = array_map('trim', explode(',', (string)$body['removeLabel']));
-                    $action['removeLabelIds'] = array_values(array_filter($labels));
+                $removeLabels = $this->extractLabels($body['removeLabel'] ?? null);
+                if (!empty($removeLabels)) {
+                    $action['removeLabelIds'] = $removeLabels;
                 }
                 if (!empty($body['forward'])) $action['forward'] = trim((string)$body['forward']);
 
@@ -259,13 +312,13 @@ class Controller
                 if (!empty($body['hasAttachment'])) $criteria['hasAttachment'] = true;
 
                 $action = [];
-                if (!empty($body['addLabel'])) {
-                    $labels = array_map('trim', explode(',', (string)$body['addLabel']));
-                    $action['addLabelIds'] = array_values(array_filter($labels));
+                $addLabels = $this->extractLabels($body['addLabel'] ?? null);
+                if (!empty($addLabels)) {
+                    $action['addLabelIds'] = $addLabels;
                 }
-                if (!empty($body['removeLabel'])) {
-                    $labels = array_map('trim', explode(',', (string)$body['removeLabel']));
-                    $action['removeLabelIds'] = array_values(array_filter($labels));
+                $removeLabels = $this->extractLabels($body['removeLabel'] ?? null);
+                if (!empty($removeLabels)) {
+                    $action['removeLabelIds'] = $removeLabels;
                 }
                 if (!empty($body['forward'])) $action['forward'] = trim((string)$body['forward']);
 
@@ -301,5 +354,22 @@ class Controller
         }
 
         return "Gmail Cleanup Service is running. Path: " . $uri;
+    }
+
+    /**
+     * @param mixed $input
+     * @return string[]
+     */
+    private function extractLabels(mixed $input): array
+    {
+        if (empty($input)) {
+            return [];
+        }
+        if (is_array($input)) {
+            $labels = array_map(fn($v) => trim((string)$v), $input);
+        } else {
+            $labels = array_map('trim', explode(',', (string)$input));
+        }
+        return array_values(array_filter($labels, fn($v) => $v !== ''));
     }
 }
