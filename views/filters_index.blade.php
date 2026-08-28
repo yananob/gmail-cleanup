@@ -11,7 +11,6 @@
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>条件 (Criteria)</th>
                         <th>実行する操作 (Action)</th>
                         <th>操作</th>
@@ -20,7 +19,6 @@
                 <tbody>
                     @foreach($filters as $filter)
                     <tr>
-                        <td><code>{{ $filter['id'] }}</code></td>
                         <td>
                             <ul class="list-unstyled mb-0 small">
                                 @if(!empty($filter['criteria']['from']))
@@ -63,17 +61,20 @@
                             </ul>
                         </td>
                         <td>
-                            <form action="{{ $basePath }}/filters/delete" method="POST" onsubmit="return confirm('このフィルターを削除してもよろしいですか？');">
-                                <input type="hidden" name="csrf_token" value="{{ $csrfToken }}">
-                                <input type="hidden" name="id" value="{{ $filter['id'] }}">
-                                <button type="submit" class="btn btn-outline-danger btn-sm">削除</button>
-                            </form>
+                            <div class="d-flex align-items-center gap-1">
+                                <a href="{{ $basePath }}/filters/edit?id={{ $filter['id'] }}" class="btn btn-outline-primary btn-sm me-1">編集</a>
+                                <form action="{{ $basePath }}/filters/delete" method="POST" onsubmit="return confirm('このフィルターを削除してもよろしいですか？');" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ $csrfToken }}">
+                                    <input type="hidden" name="id" value="{{ $filter['id'] }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">削除</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @endforeach
                     @if(empty($filters))
                     <tr>
-                        <td colspan="4" class="text-center py-4 text-muted">Gmailフィルターが登録されていません。</td>
+                        <td colspan="3" class="text-center py-4 text-muted">Gmailフィルターが登録されていません。</td>
                     </tr>
                     @endif
                 </tbody>

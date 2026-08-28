@@ -67,6 +67,50 @@ class GmailFilterService
     }
 
     /**
+     * 指定されたIDのフィルターを取得します。
+     *
+     * @param string $id
+     * @return array{
+     *     id: string,
+     *     criteria: array{from?: string, to?: string, subject?: string, query?: string, negatedQuery?: string, hasAttachment?: bool},
+     *     action: array{addLabelIds?: string[], removeLabelIds?: string[], forward?: string}
+     * }|null
+     */
+    public function getFilter(string $id): ?array
+    {
+        try {
+            $filter = $this->service->users_settings_filters->get('me', $id);
+            $criteriaObj = $filter->getCriteria();
+            $actionObj = $filter->getAction();
+
+            $criteria = [];
+            if ($criteriaObj) {
+                if ($criteriaObj->getFrom()) $criteria['from'] = $criteriaObj->getFrom();
+                if ($criteriaObj->getTo()) $criteria['to'] = $criteriaObj->getTo();
+                if ($criteriaObj->getSubject()) $criteria['subject'] = $criteriaObj->getSubject();
+                if ($criteriaObj->getQuery()) $criteria['query'] = $criteriaObj->getQuery();
+                if ($criteriaObj->getNegatedQuery()) $criteria['negatedQuery'] = $criteriaObj->getNegatedQuery();
+                if ($criteriaObj->getHasAttachment()) $criteria['hasAttachment'] = $criteriaObj->getHasAttachment();
+            }
+
+            $action = [];
+            if ($actionObj) {
+                if (!empty($actionObj->getAddLabelIds())) $action['addLabelIds'] = $actionObj->getAddLabelIds();
+                if (!empty($actionObj->getRemoveLabelIds())) $action['removeLabelIds'] = $actionObj->getRemoveLabelIds();
+                if ($actionObj->getForward()) $action['forward'] = $actionObj->getForward();
+            }
+
+            return [
+                'id' => (string)$filter->getId(),
+                'criteria' => $criteria,
+                'action' => $action,
+            ];
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
      * 新しいフィルターを作成します。
      *
      * @param array{from?: string, to?: string, subject?: string, query?: string, negatedQuery?: string, hasAttachment?: bool} $criteriaData
