@@ -47,9 +47,20 @@ function getClient(array $scopes)
     // created automatically when the authorization flow completes for the first
     // time.
     $token = getenv("GOOGLE_API_TOKEN");
-    if ($token) {
+    $forceReauth = getenv('FORCE_GOOGLE_REAUTH') === 'true';
+    if ($token && !$forceReauth) {
         $accessToken = json_decode($token, true);
+        if (!is_array($accessToken)) {
+            throw new InvalidArgumentException('GOOGLE_API_TOKEN is not valid JSON.');
+        }
         $client->setAccessToken($accessToken);
+    } elseif ($token && $forceReauth) {
+        $accessToken = json_decode($token, true);
+        if (is_array($accessToken) && isset($accessToken['access_token'])) {
+            $revokeClient = clone $client;
+            $revokeClient->setAccessToken($accessToken);
+            $revokeClient->revokeToken();
+        }
     }
 
     // If there is no previous token or it's expired.
