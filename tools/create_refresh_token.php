@@ -91,6 +91,7 @@ function getClient(array $scopes)
 $scopes = [
     Gmail::MAIL_GOOGLE_COM,
     Gmail::GMAIL_MODIFY,
+    Gmail::GMAIL_SETTINGS_BASIC,
 ];
 $client = getClient($scopes);
 $service = new Gmail($client);
