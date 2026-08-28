@@ -13,6 +13,14 @@ class GmailClientFactory
      */
     public function create(): Client
     {
+        return $this->createClient();
+    }
+
+    /**
+     * Gmail API用の認可済みクライアントを取得します。
+     */
+    public function createClient(): Client
+    {
         $client = new Client();
         $client->setApplicationName('MyCFApp');
         $client->setScopes([
@@ -50,5 +58,13 @@ class GmailClientFactory
         }
 
         return $client;
+    }
+
+    /**
+     * Gmailサービスインスタンスを作成します。
+     */
+    public function createGmailService(Client $client): Gmail
+    {
+        return new Gmail($client);
     }
 }

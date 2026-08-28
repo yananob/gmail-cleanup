@@ -128,4 +128,146 @@ class ControllerTest extends TestCase
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(302, $response->getStatusCode());
     }
+
+    public function testFiltersIndexAction(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getPath')->willReturn('/filters');
+        $request->method('getUri')->willReturn($uri);
+        $request->method('getMethod')->willReturn('GET');
+        $request->method('getQueryParams')->willReturn([]);
+
+        $clientMock = $this->createMock(Client::class);
+        $gmailMock = $this->createMock(Gmail::class);
+        $usersSettingsFiltersMock = $this->createMock(\Google\Service\Gmail\Resource\UsersSettingsFilters::class);
+        $listResponse = new \Google\Service\Gmail\ListFiltersResponse();
+        $listResponse->setFilter([]);
+        $usersSettingsFiltersMock->method('listUsersSettingsFilters')->willReturn($listResponse);
+        $gmailMock->users_settings_filters = $usersSettingsFiltersMock;
+
+        $this->gmailClientFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($clientMock);
+        $this->gmailClientFactory->expects($this->once())
+            ->method('createGmailService')
+            ->with($clientMock)
+            ->willReturn($gmailMock);
+
+        $this->blade->expects($this->once())
+            ->method('run')
+            ->with('filters_index', $this->callback(function($args) {
+                return array_key_exists('filters', $args) && array_key_exists('csrfToken', $args);
+            }))
+            ->willReturn('filters index html');
+
+        $response = $this->controller->handle($request);
+        $this->assertEquals('filters index html', $response);
+    }
+
+    public function testFiltersCreateAction(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getPath')->willReturn('/filters/create');
+        $request->method('getUri')->willReturn($uri);
+        $request->method('getMethod')->willReturn('GET');
+
+        $this->blade->expects($this->once())
+            ->method('run')
+            ->with('filters_form', $this->callback(function($args) {
+                return array_key_exists('csrfToken', $args);
+            }))
+            ->willReturn('filters form html');
+
+        $response = $this->controller->handle($request);
+        $this->assertEquals('filters form html', $response);
+    }
+
+    public function testFiltersEditAction(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getPath')->willReturn('/filters/edit');
+        $request->method('getUri')->willReturn($uri);
+        $request->method('getMethod')->willReturn('GET');
+        $request->method('getQueryParams')->willReturn(['id' => 'filter-123']);
+
+        $clientMock = $this->createMock(Client::class);
+        $gmailMock = $this->createMock(Gmail::class);
+        $usersSettingsFiltersMock = $this->createMock(\Google\Service\Gmail\Resource\UsersSettingsFilters::class);
+
+        $filterObj = new \Google\Service\Gmail\Filter();
+        $filterObj->setId('filter-123');
+        $usersSettingsFiltersMock->expects($this->once())
+            ->method('get')
+            ->with('me', 'filter-123')
+            ->willReturn($filterObj);
+        $gmailMock->users_settings_filters = $usersSettingsFiltersMock;
+
+        $this->gmailClientFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($clientMock);
+        $this->gmailClientFactory->expects($this->once())
+            ->method('createGmailService')
+            ->with($clientMock)
+            ->willReturn($gmailMock);
+
+        $this->blade->expects($this->once())
+            ->method('run')
+            ->with('filters_form', $this->callback(function($args) {
+                return array_key_exists('filter', $args) && $args['id'] === 'filter-123';
+            }))
+            ->willReturn('filters edit html');
+
+        $response = $this->controller->handle($request);
+        $this->assertEquals('filters edit html', $response);
+    }
+
+    public function testFiltersUpdateAction(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getPath')->willReturn('/filters/update');
+        $request->method('getUri')->willReturn($uri);
+        $request->method('getMethod')->willReturn('POST');
+
+        $_SESSION['csrf_token'] = 'token';
+        $request->method('getParsedBody')->willReturn([
+            'csrf_token' => 'token',
+            'id' => 'filter-123',
+            'from' => 'update@example.com',
+            'addLabel' => 'TRASH'
+        ]);
+
+        $clientMock = $this->createMock(Client::class);
+        $gmailMock = $this->createMock(Gmail::class);
+        $usersSettingsFiltersMock = $this->createMock(\Google\Service\Gmail\Resource\UsersSettingsFilters::class);
+
+        $createdFilter = new \Google\Service\Gmail\Filter();
+        $createdFilter->setId('new-filter-456');
+
+        $usersSettingsFiltersMock->expects($this->once())
+            ->method('create')
+            ->with('me', $this->isInstanceOf(\Google\Service\Gmail\Filter::class))
+            ->willReturn($createdFilter);
+
+        $usersSettingsFiltersMock->expects($this->once())
+            ->method('delete')
+            ->with('me', 'filter-123');
+
+        $gmailMock->users_settings_filters = $usersSettingsFiltersMock;
+
+        $this->gmailClientFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($clientMock);
+        $this->gmailClientFactory->expects($this->once())
+            ->method('createGmailService')
+            ->with($clientMock)
+            ->willReturn($gmailMock);
+
+        $response = $this->controller->handle($request);
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(302, $response->getStatusCode());
+    }
 }
