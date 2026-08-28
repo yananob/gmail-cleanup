@@ -24,9 +24,9 @@ class GmailClientFactory
         $client = new Client();
         $client->setApplicationName('MyCFApp');
         $client->setScopes([
-            Gmail::MAIL_GOOGLE_COM,
-            Gmail::GMAIL_MODIFY,
-            Gmail::GMAIL_READONLY,
+            Gmail::MAIL_GOOGLE_COM,  // Full access to Gmail
+            Gmail::GMAIL_MODIFY,      // Modify Gmail labels and messages
+            Gmail::GMAIL_SETTINGS_BASIC,
         ]);
         $client->setAccessType('offline');
 
