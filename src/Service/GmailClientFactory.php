@@ -13,12 +13,20 @@ class GmailClientFactory
      */
     public function create(): Client
     {
+        return $this->createClient();
+    }
+
+    /**
+     * Gmail API用の認可済みクライアントを取得します。
+     */
+    public function createClient(): Client
+    {
         $client = new Client();
         $client->setApplicationName('MyCFApp');
         $client->setScopes([
-            Gmail::MAIL_GOOGLE_COM,
-            Gmail::GMAIL_MODIFY,
-            Gmail::GMAIL_READONLY,
+            Gmail::MAIL_GOOGLE_COM,  // Full access to Gmail
+            Gmail::GMAIL_MODIFY,      // Modify Gmail labels and messages
+            Gmail::GMAIL_SETTINGS_BASIC,
         ]);
         $client->setAccessType('offline');
 
@@ -50,5 +58,13 @@ class GmailClientFactory
         }
 
         return $client;
+    }
+
+    /**
+     * Gmailサービスインスタンスを作成します。
+     */
+    public function createGmailService(Client $client): Gmail
+    {
+        return new Gmail($client);
     }
 }

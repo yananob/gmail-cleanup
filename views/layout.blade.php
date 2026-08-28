@@ -13,11 +13,21 @@
 </head>
 <body>
     <div class="container">
-        <header class="mb-4 d-flex justify-content-between align-items-center">
-            <h1>Gmail Cleanup 設定</h1>
-            @if(isset($basePath))
-                <span class="badge bg-secondary">Env: {{ $basePath }}</span>
-            @endif
+        <header class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="h3 mb-0">Gmail Cleanup / フィルター管理</h1>
+                @if(isset($basePath))
+                    <span class="badge bg-secondary">Env: {{ $basePath }}</span>
+                @endif
+            </div>
+            <ul class="nav nav-tabs">
+                <li class="nav-item">
+                    <a class="nav-link {{ ($activeTab ?? 'cleanup') === 'cleanup' ? 'active' : '' }}" href="{{ $basePath }}/">クリーンアップルール</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ ($activeTab ?? '') === 'filters' ? 'active' : '' }}" href="{{ $basePath }}/filters">Gmail フィルター設定</a>
+                </li>
+            </ul>
         </header>
 
         @if(isset($message))
