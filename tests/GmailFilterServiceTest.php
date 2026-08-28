@@ -81,6 +81,61 @@ class GmailFilterServiceTest extends TestCase
         $this->assertEquals('new-filter-id', $res->getId());
     }
 
+    public function testGetFilter(): void
+    {
+        $filter = new Filter();
+        $filter->setId('filter-123');
+
+        $criteria = new FilterCriteria();
+        $criteria->setFrom('test@example.com');
+        $filter->setCriteria($criteria);
+
+        $action = new FilterAction();
+        $action->setAddLabelIds(['TRASH']);
+        $filter->setAction($action);
+
+        $usersSettingsFiltersMock = $this->createMock(UsersSettingsFilters::class);
+        $usersSettingsFiltersMock->expects($this->once())
+            ->method('get')
+            ->with('me', 'filter-123')
+            ->willReturn($filter);
+
+        $gmailMock = $this->createMock(Gmail::class);
+        $gmailMock->users_settings_filters = $usersSettingsFiltersMock;
+
+        $service = new GmailFilterService($gmailMock);
+        $result = $service->getFilter('filter-123');
+
+        $expected = [
+            'id' => 'filter-123',
+            'criteria' => [
+                'from' => 'test@example.com',
+            ],
+            'action' => [
+                'addLabelIds' => ['TRASH'],
+            ],
+        ];
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testGetFilterNotFound(): void
+    {
+        $usersSettingsFiltersMock = $this->createMock(UsersSettingsFilters::class);
+        $usersSettingsFiltersMock->expects($this->once())
+            ->method('get')
+            ->with('me', 'non-existent')
+            ->willThrowException(new \Exception('Not found'));
+
+        $gmailMock = $this->createMock(Gmail::class);
+        $gmailMock->users_settings_filters = $usersSettingsFiltersMock;
+
+        $service = new GmailFilterService($gmailMock);
+        $result = $service->getFilter('non-existent');
+
+        $this->assertNull($result);
+    }
+
     public function testDeleteFilter(): void
     {
         $usersSettingsFiltersMock = $this->createMock(UsersSettingsFilters::class);

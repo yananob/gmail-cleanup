@@ -179,6 +179,29 @@ class Controller
                 ]);
             }
 
+            if ($method === 'GET' && $uri === '/filters/edit') {
+                $id = $queryParams['id'] ?? null;
+                $this->logger->info('Displaying Gmail filter edit form', ['id' => $id]);
+                if (!$id) return 'ID is required';
+
+                $client = $this->gmailClientFactory->create();
+                $gmailService = $this->gmailClientFactory->createGmailService($client);
+                $gmailFilterService = new GmailFilterService($gmailService);
+
+                $filter = $gmailFilterService->getFilter((string)$id);
+                if (!$filter) {
+                    $this->logger->warning('Filter not found for edit', ['id' => $id]);
+                    return 'Filter not found';
+                }
+
+                return $this->blade->run('filters_form', [
+                    'filter' => $filter,
+                    'id' => $id,
+                    'basePath' => $this->basePath,
+                    'csrfToken' => $csrfToken
+                ]);
+            }
+
             if ($method === 'POST' && $uri === '/filters/store') {
                 $this->logger->info('Storing new Gmail filter');
                 if (!$this->requestHelper->verifyCsrfToken($body)) {
@@ -212,6 +235,44 @@ class Controller
                 $gmailFilterService->createFilter($criteria, $action);
                 $this->logger->info('Filter created successfully');
                 return new Response(302, ['Location' => $this->basePath . '/filters?message=' . urlencode('フィルターを作成しました')]);
+            }
+
+            if ($method === 'POST' && $uri === '/filters/update') {
+                $id = $body['id'] ?? null;
+                $this->logger->info('Updating Gmail filter', ['id' => $id]);
+                if (!$this->requestHelper->verifyCsrfToken($body)) {
+                    $this->logger->warning('Filter update failed: Invalid CSRF token');
+                    return 'Invalid CSRF token';
+                }
+                if (!$id) return 'ID is required';
+
+                $client = $this->gmailClientFactory->create();
+                $gmailService = $this->gmailClientFactory->createGmailService($client);
+                $gmailFilterService = new GmailFilterService($gmailService);
+
+                $criteria = [];
+                if (!empty($body['from'])) $criteria['from'] = trim((string)$body['from']);
+                if (!empty($body['to'])) $criteria['to'] = trim((string)$body['to']);
+                if (!empty($body['subject'])) $criteria['subject'] = trim((string)$body['subject']);
+                if (!empty($body['query'])) $criteria['query'] = trim((string)$body['query']);
+                if (!empty($body['negatedQuery'])) $criteria['negatedQuery'] = trim((string)$body['negatedQuery']);
+                if (!empty($body['hasAttachment'])) $criteria['hasAttachment'] = true;
+
+                $action = [];
+                if (!empty($body['addLabel'])) {
+                    $labels = array_map('trim', explode(',', (string)$body['addLabel']));
+                    $action['addLabelIds'] = array_values(array_filter($labels));
+                }
+                if (!empty($body['removeLabel'])) {
+                    $labels = array_map('trim', explode(',', (string)$body['removeLabel']));
+                    $action['removeLabelIds'] = array_values(array_filter($labels));
+                }
+                if (!empty($body['forward'])) $action['forward'] = trim((string)$body['forward']);
+
+                $gmailFilterService->createFilter($criteria, $action);
+                $gmailFilterService->deleteFilter((string)$id);
+                $this->logger->info('Filter updated successfully', ['id' => $id]);
+                return new Response(302, ['Location' => $this->basePath . '/filters?message=' . urlencode('フィルターを更新しました')]);
             }
 
             if ($method === 'POST' && $uri === '/filters/delete') {
