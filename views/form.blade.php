@@ -68,12 +68,14 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-sm table-hover">
+                <table class="table table-sm table-hover align-middle">
                     <thead>
                         <tr>
                             <th>日付</th>
+                            <th>From</th>
                             <th>件名</th>
                             <th>スニペット</th>
+                            <th style="min-width: 170px;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="preview-results">
@@ -88,6 +90,33 @@
 </div>
 
 <script>
+    function copyTextToClipboard(text, successCallback) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(successCallback).catch(() => {
+                fallbackCopyText(text, successCallback);
+            });
+        } else {
+            fallbackCopyText(text, successCallback);
+        }
+    }
+
+    function fallbackCopyText(text, successCallback) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            if (successCallback) successCallback();
+        } catch (err) {
+            alert('コピーに失敗しました');
+        }
+        document.body.removeChild(textArea);
+    }
+
     document.getElementById('preview-button').addEventListener('click', async function() {
         const button = this;
         const form = button.closest('form');
@@ -121,18 +150,71 @@
                     const row = document.createElement('tr');
 
                     const dateCell = document.createElement('td');
-                    dateCell.className = 'text-nowrap';
-                    dateCell.textContent = msg.date;
+                    dateCell.className = 'text-nowrap small';
+                    dateCell.textContent = msg.date || '-';
                     row.appendChild(dateCell);
 
+                    const fromCell = document.createElement('td');
+                    fromCell.className = 'small';
+                    fromCell.textContent = msg.from || '-';
+                    row.appendChild(fromCell);
+
                     const subjectCell = document.createElement('td');
-                    subjectCell.textContent = msg.subject;
+                    subjectCell.className = 'small fw-bold';
+                    subjectCell.textContent = msg.subject || '(無題)';
                     row.appendChild(subjectCell);
 
                     const snippetCell = document.createElement('td');
                     snippetCell.className = 'text-muted small';
-                    snippetCell.textContent = msg.snippet;
+                    snippetCell.textContent = msg.snippet || '';
                     row.appendChild(snippetCell);
+
+                    const actionCell = document.createElement('td');
+                    actionCell.className = 'text-nowrap';
+
+                    const btnGroup = document.createElement('div');
+                    btnGroup.className = 'btn-group btn-group-sm';
+
+                    const copyFromBtn = document.createElement('button');
+                    copyFromBtn.type = 'button';
+                    copyFromBtn.className = 'btn btn-outline-secondary';
+                    copyFromBtn.textContent = 'Fromをコピー';
+                    copyFromBtn.addEventListener('click', function() {
+                        copyTextToClipboard(msg.from || '', () => {
+                            const originalText = copyFromBtn.textContent;
+                            copyFromBtn.textContent = 'コピー完了!';
+                            copyFromBtn.classList.remove('btn-outline-secondary');
+                            copyFromBtn.classList.add('btn-success');
+                            setTimeout(() => {
+                                copyFromBtn.textContent = originalText;
+                                copyFromBtn.classList.remove('btn-success');
+                                copyFromBtn.classList.add('btn-outline-secondary');
+                            }, 1500);
+                        });
+                    });
+                    btnGroup.appendChild(copyFromBtn);
+
+                    const copySubjectBtn = document.createElement('button');
+                    copySubjectBtn.type = 'button';
+                    copySubjectBtn.className = 'btn btn-outline-secondary';
+                    copySubjectBtn.textContent = '件名をコピー';
+                    copySubjectBtn.addEventListener('click', function() {
+                        copyTextToClipboard(msg.subject || '', () => {
+                            const originalText = copySubjectBtn.textContent;
+                            copySubjectBtn.textContent = 'コピー完了!';
+                            copySubjectBtn.classList.remove('btn-outline-secondary');
+                            copySubjectBtn.classList.add('btn-success');
+                            setTimeout(() => {
+                                copySubjectBtn.textContent = originalText;
+                                copySubjectBtn.classList.remove('btn-success');
+                                copySubjectBtn.classList.add('btn-outline-secondary');
+                            }, 1500);
+                        });
+                    });
+                    btnGroup.appendChild(copySubjectBtn);
+
+                    actionCell.appendChild(btnGroup);
+                    row.appendChild(actionCell);
 
                     resultsTable.appendChild(row);
                 });
