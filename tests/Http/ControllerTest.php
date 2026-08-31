@@ -89,6 +89,31 @@ class ControllerTest extends TestCase
         $this->assertEquals('form content', $response);
     }
 
+    public function testCreateActionWithQueryParams(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getPath')->willReturn('/create');
+        $request->method('getUri')->willReturn($uri);
+        $request->method('getMethod')->willReturn('GET');
+        $request->method('getQueryParams')->willReturn([
+            'from' => 'test@example.com',
+            'subject' => 'Weekly News',
+        ]);
+
+        $this->blade->expects($this->once())
+            ->method('run')
+            ->with('form', $this->callback(function($args) {
+                return isset($args['config']) &&
+                    $args['config']['from'] === 'test@example.com' &&
+                    $args['config']['subject'] === 'Weekly News';
+            }))
+            ->willReturn('form content with initial values');
+
+        $response = $this->controller->handle($request);
+        $this->assertEquals('form content with initial values', $response);
+    }
+
     public function testStoreAction(): void
     {
         $request = $this->createMock(ServerRequestInterface::class);
