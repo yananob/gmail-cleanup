@@ -21,7 +21,7 @@ class GmailService
      *
      * @param string $query Gmail検索クエリ。
      * @param int $maxResults 最大取得件数。
-     * @return array<int, array{id: string, snippet: string, subject: string, date: string}> メッセージの詳細リスト。
+     * @return array<int, array{id: string, snippet: string, subject: string, date: string, from: string}> メッセージの詳細リスト。
      */
     public function listMessages(string $query, int $maxResults = 20): array
     {
@@ -48,12 +48,16 @@ class GmailService
 
                 $subject = '';
                 $date = '';
+                $from = '';
                 foreach ($headers as $header) {
                     if ($header->getName() === 'Subject') {
                         $subject = $header->getValue();
                     }
                     if ($header->getName() === 'Date') {
                         $date = $header->getValue();
+                    }
+                    if ($header->getName() === 'From') {
+                        $from = $header->getValue();
                     }
                 }
 
@@ -62,6 +66,7 @@ class GmailService
                     'snippet' => $msg->getSnippet(),
                     'subject' => $subject,
                     'date' => $date,
+                    'from' => $from,
                 ];
             }
 

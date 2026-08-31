@@ -63,9 +63,17 @@ class Controller
 
             if ($method === 'GET' && $uri === '/create') {
                 $this->logger->info('Displaying create form');
+                $initialConfig = [];
+                if (!empty($queryParams['from'])) {
+                    $initialConfig['from'] = (string)$queryParams['from'];
+                }
+                if (!empty($queryParams['subject'])) {
+                    $initialConfig['subject'] = (string)$queryParams['subject'];
+                }
                 return $this->blade->run('form', [
                     'basePath' => $this->basePath,
-                    'csrfToken' => $csrfToken
+                    'csrfToken' => $csrfToken,
+                    'config' => $initialConfig,
                 ]);
             }
 
