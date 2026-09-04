@@ -141,9 +141,7 @@ class Controller
                 }
 
                 try {
-                    $client = $this->gmailClientFactory->create();
-                    $gmailService = $this->gmailClientFactory->createGmailService($client);
-                    $gmailAppService = new GmailService($gmailService);
+                    $gmailAppService = $this->getGmailAppService();
 
                     $data = $this->requestHelper->filterInputData($body);
                     $queryBuilder = new Query();
@@ -166,9 +164,7 @@ class Controller
 
             if ($method === 'GET' && $uri === '/filters') {
                 $this->logger->info('Fetching all Gmail filters');
-                $client = $this->gmailClientFactory->create();
-                $gmailService = $this->gmailClientFactory->createGmailService($client);
-                $gmailFilterService = new GmailFilterService($gmailService);
+                $gmailFilterService = $this->getGmailFilterService();
 
                 $filters = $gmailFilterService->listFilters();
                 return $this->blade->run('filters_index', [
@@ -192,9 +188,7 @@ class Controller
                 $this->logger->info('Displaying Gmail filter edit form', ['id' => $id]);
                 if (!$id) return 'ID is required';
 
-                $client = $this->gmailClientFactory->create();
-                $gmailService = $this->gmailClientFactory->createGmailService($client);
-                $gmailFilterService = new GmailFilterService($gmailService);
+                $gmailFilterService = $this->getGmailFilterService();
 
                 $filter = $gmailFilterService->getFilter((string)$id);
                 if (!$filter) {
@@ -217,9 +211,7 @@ class Controller
                 }
 
                 try {
-                    $client = $this->gmailClientFactory->create();
-                    $gmailService = $this->gmailClientFactory->createGmailService($client);
-                    $gmailAppService = new GmailService($gmailService);
+                    $gmailAppService = $this->getGmailAppService();
 
                     $queryParts = [];
                     if (!empty($body['from'])) {
@@ -270,28 +262,9 @@ class Controller
                     return 'Invalid CSRF token';
                 }
 
-                $client = $this->gmailClientFactory->create();
-                $gmailService = $this->gmailClientFactory->createGmailService($client);
-                $gmailFilterService = new GmailFilterService($gmailService);
-
-                $criteria = [];
-                if (!empty($body['from'])) $criteria['from'] = trim((string)$body['from']);
-                if (!empty($body['to'])) $criteria['to'] = trim((string)$body['to']);
-                if (!empty($body['subject'])) $criteria['subject'] = trim((string)$body['subject']);
-                if (!empty($body['query'])) $criteria['query'] = trim((string)$body['query']);
-                if (!empty($body['negatedQuery'])) $criteria['negatedQuery'] = trim((string)$body['negatedQuery']);
-                if (!empty($body['hasAttachment'])) $criteria['hasAttachment'] = true;
-
-                $action = [];
-                $addLabels = $this->extractLabels($body['addLabel'] ?? null);
-                if (!empty($addLabels)) {
-                    $action['addLabelIds'] = $addLabels;
-                }
-                $removeLabels = $this->extractLabels($body['removeLabel'] ?? null);
-                if (!empty($removeLabels)) {
-                    $action['removeLabelIds'] = $removeLabels;
-                }
-                if (!empty($body['forward'])) $action['forward'] = trim((string)$body['forward']);
+                $gmailFilterService = $this->getGmailFilterService();
+                $criteria = $this->extractFilterCriteria($body);
+                $action = $this->extractFilterAction($body);
 
                 $gmailFilterService->createFilter($criteria, $action);
                 $this->logger->info('Filter created successfully');
@@ -307,28 +280,9 @@ class Controller
                 }
                 if (!$id) return 'ID is required';
 
-                $client = $this->gmailClientFactory->create();
-                $gmailService = $this->gmailClientFactory->createGmailService($client);
-                $gmailFilterService = new GmailFilterService($gmailService);
-
-                $criteria = [];
-                if (!empty($body['from'])) $criteria['from'] = trim((string)$body['from']);
-                if (!empty($body['to'])) $criteria['to'] = trim((string)$body['to']);
-                if (!empty($body['subject'])) $criteria['subject'] = trim((string)$body['subject']);
-                if (!empty($body['query'])) $criteria['query'] = trim((string)$body['query']);
-                if (!empty($body['negatedQuery'])) $criteria['negatedQuery'] = trim((string)$body['negatedQuery']);
-                if (!empty($body['hasAttachment'])) $criteria['hasAttachment'] = true;
-
-                $action = [];
-                $addLabels = $this->extractLabels($body['addLabel'] ?? null);
-                if (!empty($addLabels)) {
-                    $action['addLabelIds'] = $addLabels;
-                }
-                $removeLabels = $this->extractLabels($body['removeLabel'] ?? null);
-                if (!empty($removeLabels)) {
-                    $action['removeLabelIds'] = $removeLabels;
-                }
-                if (!empty($body['forward'])) $action['forward'] = trim((string)$body['forward']);
+                $gmailFilterService = $this->getGmailFilterService();
+                $criteria = $this->extractFilterCriteria($body);
+                $action = $this->extractFilterAction($body);
 
                 $gmailFilterService->createFilter($criteria, $action);
                 $gmailFilterService->deleteFilter((string)$id);
@@ -345,9 +299,7 @@ class Controller
                 }
                 if (!$id) return 'ID is required';
 
-                $client = $this->gmailClientFactory->create();
-                $gmailService = $this->gmailClientFactory->createGmailService($client);
-                $gmailFilterService = new GmailFilterService($gmailService);
+                $gmailFilterService = $this->getGmailFilterService();
 
                 $gmailFilterService->deleteFilter((string)$id);
                 $this->logger->info('Filter deleted successfully', ['id' => $id]);
@@ -362,6 +314,57 @@ class Controller
         }
 
         return "Gmail Cleanup Service is running. Path: " . $uri;
+    }
+
+    private function getGmailFilterService(): GmailFilterService
+    {
+        $client = $this->gmailClientFactory->create();
+        $gmailService = $this->gmailClientFactory->createGmailService($client);
+        return new GmailFilterService($gmailService);
+    }
+
+    private function getGmailAppService(): GmailService
+    {
+        $client = $this->gmailClientFactory->create();
+        $gmailService = $this->gmailClientFactory->createGmailService($client);
+        return new GmailService($gmailService);
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     * @return array{from?: string, to?: string, subject?: string, query?: string, negatedQuery?: string, hasAttachment?: bool}
+     */
+    private function extractFilterCriteria(array $body): array
+    {
+        $criteria = [];
+        if (!empty($body['from'])) $criteria['from'] = trim((string)$body['from']);
+        if (!empty($body['to'])) $criteria['to'] = trim((string)$body['to']);
+        if (!empty($body['subject'])) $criteria['subject'] = trim((string)$body['subject']);
+        if (!empty($body['query'])) $criteria['query'] = trim((string)$body['query']);
+        if (!empty($body['negatedQuery'])) $criteria['negatedQuery'] = trim((string)$body['negatedQuery']);
+        if (!empty($body['hasAttachment'])) $criteria['hasAttachment'] = true;
+
+        return $criteria;
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     * @return array{addLabelIds?: string[], removeLabelIds?: string[], forward?: string}
+     */
+    private function extractFilterAction(array $body): array
+    {
+        $action = [];
+        $addLabels = $this->extractLabels($body['addLabel'] ?? null);
+        if (!empty($addLabels)) {
+            $action['addLabelIds'] = $addLabels;
+        }
+        $removeLabels = $this->extractLabels($body['removeLabel'] ?? null);
+        if (!empty($removeLabels)) {
+            $action['removeLabelIds'] = $removeLabels;
+        }
+        if (!empty($body['forward'])) $action['forward'] = trim((string)$body['forward']);
+
+        return $action;
     }
 
     /**
