@@ -96,7 +96,7 @@ jobs:
 
   deploy:
     needs: [prepare-deploy]
-    uses: yananob/myapps-common/.github/workflows/deploy-cloud-functions.yaml@private-repo
+    uses: yananob/myapps-common/.github/workflows/deploy-cloud-functions.yaml@main
     with:
       function_name: ${{ needs.prepare-deploy.outputs.function_name }}
       service_account_name: 'cloud-run-functions-deployer'
