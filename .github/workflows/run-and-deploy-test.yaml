@@ -96,18 +96,16 @@ jobs:
 
   deploy:
     needs: [prepare-deploy]
-    uses: yananob/myapps-common/.github/workflows/deploy-cloud-functions.yaml@private-repo
+    uses: yananob/myapps-common/.github/workflows/deploy-cloud-functions.yaml@main
     with:
       function_name: ${{ needs.prepare-deploy.outputs.function_name }}
       service_account_name: 'cloud-run-functions-deployer'
       wip_pool_name: 'github-actions-pool'
       wip_provider_name: 'github-provider'
       runtime: php82
-      project_id: 'nobu5-393106'
       secrets_config: |-
         GOOGLE_API_CLIENT_SECRET
         GOOGLE_API_TOKEN
-        FIREBASE_SERVICE_ACCOUNT
       # gcs_source_dir: ./public/
       # gcs_bucket_name: XXX-static
       # gcs_bucket_path: test
@@ -121,7 +119,7 @@ jobs:
       environment_variables: |-
         APP_ENV=test
     secrets:
-      # GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       GCP_REGION: ${{ secrets.GCP_REGION }}
       GCP_PROJECT_NUMBER: ${{ secrets.GCP_PROJECT_NUMBER }}
 

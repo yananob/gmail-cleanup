@@ -41,7 +41,6 @@ jobs:
       secrets_config: |-
         GOOGLE_API_CLIENT_SECRET
         GOOGLE_API_TOKEN
-        FIREBASE_SERVICE_ACCOUNT
       # gcs_source_dir: ./public/
       # gcs_bucket_name: XXX-static
       # gcs_bucket_path: test
