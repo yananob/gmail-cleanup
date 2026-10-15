@@ -36,31 +36,7 @@ class GmailFilterService
 
         $result = [];
         foreach ($filters as $filter) {
-            $criteriaObj = $filter->getCriteria();
-            $actionObj = $filter->getAction();
-
-            $criteria = [];
-            if ($criteriaObj) {
-                if ($criteriaObj->getFrom()) $criteria['from'] = $criteriaObj->getFrom();
-                if ($criteriaObj->getTo()) $criteria['to'] = $criteriaObj->getTo();
-                if ($criteriaObj->getSubject()) $criteria['subject'] = $criteriaObj->getSubject();
-                if ($criteriaObj->getQuery()) $criteria['query'] = $criteriaObj->getQuery();
-                if ($criteriaObj->getNegatedQuery()) $criteria['negatedQuery'] = $criteriaObj->getNegatedQuery();
-                if ($criteriaObj->getHasAttachment()) $criteria['hasAttachment'] = $criteriaObj->getHasAttachment();
-            }
-
-            $action = [];
-            if ($actionObj) {
-                if (!empty($actionObj->getAddLabelIds())) $action['addLabelIds'] = $actionObj->getAddLabelIds();
-                if (!empty($actionObj->getRemoveLabelIds())) $action['removeLabelIds'] = $actionObj->getRemoveLabelIds();
-                if ($actionObj->getForward()) $action['forward'] = $actionObj->getForward();
-            }
-
-            $result[] = [
-                'id' => (string)$filter->getId(),
-                'criteria' => $criteria,
-                'action' => $action,
-            ];
+            $result[] = $this->formatFilter($filter);
         }
 
         return $result;
@@ -80,34 +56,49 @@ class GmailFilterService
     {
         try {
             $filter = $this->service->users_settings_filters->get('me', $id);
-            $criteriaObj = $filter->getCriteria();
-            $actionObj = $filter->getAction();
-
-            $criteria = [];
-            if ($criteriaObj) {
-                if ($criteriaObj->getFrom()) $criteria['from'] = $criteriaObj->getFrom();
-                if ($criteriaObj->getTo()) $criteria['to'] = $criteriaObj->getTo();
-                if ($criteriaObj->getSubject()) $criteria['subject'] = $criteriaObj->getSubject();
-                if ($criteriaObj->getQuery()) $criteria['query'] = $criteriaObj->getQuery();
-                if ($criteriaObj->getNegatedQuery()) $criteria['negatedQuery'] = $criteriaObj->getNegatedQuery();
-                if ($criteriaObj->getHasAttachment()) $criteria['hasAttachment'] = $criteriaObj->getHasAttachment();
-            }
-
-            $action = [];
-            if ($actionObj) {
-                if (!empty($actionObj->getAddLabelIds())) $action['addLabelIds'] = $actionObj->getAddLabelIds();
-                if (!empty($actionObj->getRemoveLabelIds())) $action['removeLabelIds'] = $actionObj->getRemoveLabelIds();
-                if ($actionObj->getForward()) $action['forward'] = $actionObj->getForward();
-            }
-
-            return [
-                'id' => (string)$filter->getId(),
-                'criteria' => $criteria,
-                'action' => $action,
-            ];
+            return $this->formatFilter($filter);
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    /**
+     * Filterオブジェクトを配列形式にフォーマットします。
+     *
+     * @param Filter $filter
+     * @return array{
+     *     id: string,
+     *     criteria: array{from?: string, to?: string, subject?: string, query?: string, negatedQuery?: string, hasAttachment?: bool},
+     *     action: array{addLabelIds?: string[], removeLabelIds?: string[], forward?: string}
+     * }
+     */
+    private function formatFilter(Filter $filter): array
+    {
+        $criteriaObj = $filter->getCriteria();
+        $actionObj = $filter->getAction();
+
+        $criteria = [];
+        if ($criteriaObj) {
+            if ($criteriaObj->getFrom()) $criteria['from'] = $criteriaObj->getFrom();
+            if ($criteriaObj->getTo()) $criteria['to'] = $criteriaObj->getTo();
+            if ($criteriaObj->getSubject()) $criteria['subject'] = $criteriaObj->getSubject();
+            if ($criteriaObj->getQuery()) $criteria['query'] = $criteriaObj->getQuery();
+            if ($criteriaObj->getNegatedQuery()) $criteria['negatedQuery'] = $criteriaObj->getNegatedQuery();
+            if ($criteriaObj->getHasAttachment()) $criteria['hasAttachment'] = $criteriaObj->getHasAttachment();
+        }
+
+        $action = [];
+        if ($actionObj) {
+            if (!empty($actionObj->getAddLabelIds())) $action['addLabelIds'] = $actionObj->getAddLabelIds();
+            if (!empty($actionObj->getRemoveLabelIds())) $action['removeLabelIds'] = $actionObj->getRemoveLabelIds();
+            if ($actionObj->getForward()) $action['forward'] = $actionObj->getForward();
+        }
+
+        return [
+            'id' => (string)$filter->getId(),
+            'criteria' => $criteria,
+            'action' => $action,
+        ];
     }
 
     /**

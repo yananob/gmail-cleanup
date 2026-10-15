@@ -43,13 +43,13 @@ class GmailCleanupHandler
         }
 
         foreach ($targets as $target) {
-            $this->logger->info($this->filterLogMessage("Processing target: " . json_encode($target)));
+            $this->logger->info($this->filterLogMessage("Processing target: " . json_encode($target, JSON_UNESCAPED_UNICODE)));
             $params = [
                 "maxResults" => 20,
                 "q" => $this->query->build($target),
                 "includeSpamTrash" => false,
             ];
-            $this->logger->info($this->filterLogMessage("Listing messages: " . json_encode($params)));
+            $this->logger->info($this->filterLogMessage("Listing messages: " . json_encode($params, JSON_UNESCAPED_UNICODE)));
 
             try {
                 $results = $this->service->users_messages->listUsersMessages($user, $params);

@@ -49,6 +49,12 @@
                 <div class="form-text">指定した期間より前のメールを削除対象にします。</div>
             </div>
 
+            <div class="mb-3 form-check">
+                <input type="hidden" name="only_unread" value="0">
+                <input type="checkbox" class="form-check-input" id="only_unread" name="only_unread" value="1" {{ !empty($config['only_unread']) ? 'checked' : '' }}>
+                <label class="form-check-label" for="only_unread">未読メールのみ対象にする (only_unread)</label>
+            </div>
+
             <div class="d-flex justify-content-between">
                 <a href="{{ $basePath }}/" class="btn btn-secondary">キャンセル</a>
                 <div>

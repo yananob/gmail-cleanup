@@ -32,49 +32,43 @@ class GmailService
             'includeSpamTrash' => false,
         ];
 
-        try {
-            $results = $this->service->users_messages->listUsersMessages($user, $params);
-            $messages = $results->getMessages();
+        $results = $this->service->users_messages->listUsersMessages($user, $params);
+        $messages = $results->getMessages();
 
-            if (empty($messages)) {
-                return [];
-            }
-
-            $list = [];
-            foreach ($messages as $message) {
-                $msg = $this->service->users_messages->get($user, $message->id);
-                $payload = $msg->getPayload();
-                $headers = $payload->getHeaders();
-
-                $subject = '';
-                $date = '';
-                $from = '';
-                foreach ($headers as $header) {
-                    if ($header->getName() === 'Subject') {
-                        $subject = $header->getValue();
-                    }
-                    if ($header->getName() === 'Date') {
-                        $date = $header->getValue();
-                    }
-                    if ($header->getName() === 'From') {
-                        $from = $header->getValue();
-                    }
-                }
-
-                $list[] = [
-                    'id' => $message->id,
-                    'snippet' => $msg->getSnippet(),
-                    'subject' => $subject,
-                    'date' => $date,
-                    'from' => $from,
-                ];
-            }
-
-            return $list;
-        } catch (\Exception $e) {
-            // エラーが発生した場合は空配列を返すか、必要に応じて例外を再スローします
-            // ここではログ記録などが本来望ましいですが、呼び出し元で制御することを想定します
-            throw $e;
+        if (empty($messages)) {
+            return [];
         }
+
+        $list = [];
+        foreach ($messages as $message) {
+            $msg = $this->service->users_messages->get($user, $message->id, [
+                'format' => 'metadata',
+                'metadataHeaders' => ['Subject', 'Date', 'From'],
+            ]);
+            $payload = $msg->getPayload();
+            $headers = $payload ? $payload->getHeaders() : [];
+
+            $subject = '';
+            $date = '';
+            $from = '';
+            foreach ($headers as $header) {
+                match ($header->getName()) {
+                    'Subject' => $subject = $header->getValue(),
+                    'Date' => $date = $header->getValue(),
+                    'From' => $from = $header->getValue(),
+                    default => null,
+                };
+            }
+
+            $list[] = [
+                'id' => $message->id,
+                'snippet' => (string)$msg->getSnippet(),
+                'subject' => $subject,
+                'date' => $date,
+                'from' => $from,
+            ];
+        }
+
+        return $list;
     }
 }
