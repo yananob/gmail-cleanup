@@ -17,6 +17,7 @@
                         <th>件名</th>
                         <th>ラベル</th>
                         <th>対象期間 (date_before)</th>
+                        <th>未読のみ</th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -29,6 +30,7 @@
                         <td>{{ $config['data']['subject'] ?? '-' }}</td>
                         <td>{{ $config['data']['label'] ?? '-' }}</td>
                         <td>{{ $config['data']['date_before'] ?? '-' }}</td>
+                        <td>{{ !empty($config['data']['only_unread']) ? 'はい' : '-' }}</td>
                         <td>
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ $basePath }}/edit?id={{ $config['id'] }}" class="btn btn-outline-secondary">編集</a>
@@ -43,7 +45,7 @@
                     @endforeach
                     @if(empty($configs))
                     <tr>
-                        <td colspan="7" class="text-center">設定がありません。</td>
+                        <td colspan="8" class="text-center">設定がありません。</td>
                     </tr>
                     @endif
                 </tbody>
