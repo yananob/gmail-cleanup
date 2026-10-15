@@ -81,7 +81,7 @@ class Controller
                 $this->logger->info('Storing new config');
                 if (!$this->requestHelper->verifyCsrfToken($body)) {
                     $this->logger->warning('Store failed: Invalid CSRF token');
-                    return 'Invalid CSRF token';
+                    return new Response(403, [], 'Invalid CSRF token');
                 }
                 $data = $this->requestHelper->filterInputData($body);
                 $this->configRepository->create($data);
@@ -92,11 +92,11 @@ class Controller
             if ($method === 'GET' && $uri === '/edit') {
                 $id = $queryParams['id'] ?? null;
                 $this->logger->info('Displaying edit form', ['id' => $id]);
-                if (!$id) return 'ID is required';
+                if (!$id) return new Response(400, [], 'ID is required');
                 $config = $this->configRepository->find((string)$id);
                 if (!$config) {
                     $this->logger->warning('Config not found for edit', ['id' => $id]);
-                    return 'Config not found';
+                    return new Response(404, [], 'Config not found');
                 }
                 return $this->blade->run('form', [
                     'config' => $config,
@@ -111,9 +111,9 @@ class Controller
                 $this->logger->info('Updating config', ['id' => $id]);
                 if (!$this->requestHelper->verifyCsrfToken($body)) {
                     $this->logger->warning('Update failed: Invalid CSRF token');
-                    return 'Invalid CSRF token';
+                    return new Response(403, [], 'Invalid CSRF token');
                 }
-                if (!$id) return 'ID is required';
+                if (!$id) return new Response(400, [], 'ID is required');
                 $data = $this->requestHelper->filterInputData($body);
                 unset($data['id']);
                 $this->configRepository->update((string)$id, $data);
@@ -126,9 +126,9 @@ class Controller
                 $this->logger->info('Deleting config', ['id' => $id]);
                 if (!$this->requestHelper->verifyCsrfToken($body)) {
                     $this->logger->warning('Delete failed: Invalid CSRF token');
-                    return 'Invalid CSRF token';
+                    return new Response(403, [], 'Invalid CSRF token');
                 }
-                if (!$id) return 'ID is required';
+                if (!$id) return new Response(400, [], 'ID is required');
                 $this->configRepository->delete((string)$id);
                 $this->logger->info('Config deleted successfully', ['id' => $id]);
                 return new Response(302, ['Location' => $this->basePath . '/?message=' . urlencode('削除しました')]);
@@ -186,14 +186,14 @@ class Controller
             if ($method === 'GET' && $uri === '/filters/edit') {
                 $id = $queryParams['id'] ?? null;
                 $this->logger->info('Displaying Gmail filter edit form', ['id' => $id]);
-                if (!$id) return 'ID is required';
+                if (!$id) return new Response(400, [], 'ID is required');
 
                 $gmailFilterService = $this->getGmailFilterService();
 
                 $filter = $gmailFilterService->getFilter((string)$id);
                 if (!$filter) {
                     $this->logger->warning('Filter not found for edit', ['id' => $id]);
-                    return 'Filter not found';
+                    return new Response(404, [], 'Filter not found');
                 }
 
                 return $this->blade->run('filters_form', [
@@ -259,7 +259,7 @@ class Controller
                 $this->logger->info('Storing new Gmail filter');
                 if (!$this->requestHelper->verifyCsrfToken($body)) {
                     $this->logger->warning('Filter store failed: Invalid CSRF token');
-                    return 'Invalid CSRF token';
+                    return new Response(403, [], 'Invalid CSRF token');
                 }
 
                 $gmailFilterService = $this->getGmailFilterService();
@@ -276,9 +276,9 @@ class Controller
                 $this->logger->info('Updating Gmail filter', ['id' => $id]);
                 if (!$this->requestHelper->verifyCsrfToken($body)) {
                     $this->logger->warning('Filter update failed: Invalid CSRF token');
-                    return 'Invalid CSRF token';
+                    return new Response(403, [], 'Invalid CSRF token');
                 }
-                if (!$id) return 'ID is required';
+                if (!$id) return new Response(400, [], 'ID is required');
 
                 $gmailFilterService = $this->getGmailFilterService();
                 $criteria = $this->extractFilterCriteria($body);
@@ -295,9 +295,9 @@ class Controller
                 $this->logger->info('Deleting Gmail filter', ['id' => $id]);
                 if (!$this->requestHelper->verifyCsrfToken($body)) {
                     $this->logger->warning('Filter delete failed: Invalid CSRF token');
-                    return 'Invalid CSRF token';
+                    return new Response(403, [], 'Invalid CSRF token');
                 }
-                if (!$id) return 'ID is required';
+                if (!$id) return new Response(400, [], 'ID is required');
 
                 $gmailFilterService = $this->getGmailFilterService();
 
@@ -310,7 +310,7 @@ class Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return 'Error: ' . $e->getMessage();
+            return new Response(500, [], 'Error: ' . $e->getMessage());
         }
 
         return "Gmail Cleanup Service is running. Path: " . $uri;

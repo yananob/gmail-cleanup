@@ -54,7 +54,10 @@ class GmailServiceTest extends TestCase
 
         $usersMessagesMock->expects($this->once())
             ->method('get')
-            ->with('me', 'msg-123')
+            ->with('me', 'msg-123', [
+                'format' => 'metadata',
+                'metadataHeaders' => ['Subject', 'Date', 'From'],
+            ])
             ->willReturn($detailMsg);
 
         $gmailMock->users_messages = $usersMessagesMock;

@@ -45,6 +45,10 @@ final class Query
             $parts[] = 'before:' . $targetDate;
         }
 
+        if (!empty($target['only_unread'])) {
+            $parts[] = 'is:unread';
+        }
+
         return implode(' ', $parts);
     }
 }
