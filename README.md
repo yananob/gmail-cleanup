@@ -32,7 +32,7 @@
 
 ### 実行環境
 
-- **ランタイム**：PHP 8.2 以上
+- **ランタイム**：PHP 8.4 以上
 - **プラットフォーム**：Google Cloud Functions
 - **データベース**：Google Cloud Firestore (Native Mode)
 - **トリガー**：Cloud Pub/Sub イベント（定期実行用）
