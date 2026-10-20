@@ -25,7 +25,10 @@ function main_http(ServerRequestInterface $request): string|ResponseInterface
     $logger = new Logger('gmail-cleanup-http');
     $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
 
-    $firestore = new FirestoreClient();
+    // PHP 8.4 ランタイムにおける gRPC/gax (CredentialsWrapper) のコールスタック無限再帰エラーを回避するため 'transport' => 'rest' を指定
+    $firestore = new FirestoreClient([
+        'transport' => 'rest',
+    ]);
 
     $rootCollection = AppConfig::getFirestoreRootCollection();
     $configRepository = new ConfigRepository($firestore, $rootCollection);
@@ -59,7 +62,10 @@ function main_event(CloudEventInterface $event): void
     $logger = new Logger('gmail-cleanup');
     $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
 
-    $firestore = new FirestoreClient();
+    // PHP 8.4 ランタイムにおける gRPC/gax (CredentialsWrapper) のコールスタック無限再帰エラーを回避するため 'transport' => 'rest' を指定
+    $firestore = new FirestoreClient([
+        'transport' => 'rest',
+    ]);
 
     // Google Client for Gmail API
     $clientFactory = new GmailClientFactory();
