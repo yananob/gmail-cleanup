@@ -148,7 +148,7 @@ class Controller
                     $query = $queryBuilder->build($data);
                     $this->logger->info('Preview request', ['query' => $query]);
 
-                    $messages = $gmailAppService->listMessages($query, 20);
+                    $messages = $gmailAppService->listMessages($query, 50);
                     return new Response(200, ['Content-Type' => 'application/json'], (string)json_encode($messages));
                 } catch (\Exception $e) {
                     $errorMsg = $e->getMessage();
