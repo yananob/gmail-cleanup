@@ -3,10 +3,10 @@
 @section('content')
 <div class="card">
     <div class="card-header">
-        <h5 class="mb-0">{{ isset($config) ? 'ルール編集' : '新規ルール作成' }}</h5>
+        <h5 class="mb-0">{{ isset($id) ? 'ルール編集' : '新規ルール作成' }}</h5>
     </div>
     <div class="card-body">
-        <form action="{{ isset($config) ? $basePath . '/update' : $basePath . '/store' }}" method="POST">
+        <form action="{{ isset($id) ? $basePath . '/update' : $basePath . '/store' }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ $csrfToken }}">
             @if(isset($id))
             <input type="hidden" name="id" value="{{ $id }}">
@@ -59,7 +59,7 @@
                 <a href="{{ $basePath }}/" class="btn btn-secondary">キャンセル</a>
                 <div>
                     <button type="button" id="preview-button" class="btn btn-info me-2">プレビュー</button>
-                    <button type="submit" class="btn btn-primary">{{ isset($config) ? '更新する' : '保存する' }}</button>
+                    <button type="submit" class="btn btn-primary">{{ isset($id) ? '更新する' : '保存する' }}</button>
                 </div>
             </div>
         </form>

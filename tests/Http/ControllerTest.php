@@ -81,7 +81,7 @@ class ControllerTest extends TestCase
         $this->blade->expects($this->once())
             ->method('run')
             ->with('form', $this->callback(function($args) {
-                return array_key_exists('csrfToken', $args);
+                return array_key_exists('csrfToken', $args) && !isset($args['id']);
             }))
             ->willReturn('form content');
 
@@ -104,7 +104,8 @@ class ControllerTest extends TestCase
         $this->blade->expects($this->once())
             ->method('run')
             ->with('form', $this->callback(function($args) {
-                return isset($args['config']) &&
+                return !isset($args['id']) &&
+                    isset($args['config']) &&
                     $args['config']['from'] === 'test@example.com' &&
                     $args['config']['subject'] === 'Weekly News';
             }))
@@ -112,6 +113,34 @@ class ControllerTest extends TestCase
 
         $response = $this->controller->handle($request);
         $this->assertEquals('form content with initial values', $response);
+    }
+
+    public function testEditAction(): void
+    {
+        $request = $this->createMock(ServerRequestInterface::class);
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getPath')->willReturn('/edit');
+        $request->method('getUri')->willReturn($uri);
+        $request->method('getMethod')->willReturn('GET');
+        $request->method('getQueryParams')->willReturn(['id' => 'rule-123']);
+
+        $this->configRepository->expects($this->once())
+            ->method('find')
+            ->with('rule-123')
+            ->willReturn(['keyword' => 'test_rule']);
+
+        $this->blade->expects($this->once())
+            ->method('run')
+            ->with('form', $this->callback(function($args) {
+                return isset($args['id']) &&
+                    $args['id'] === 'rule-123' &&
+                    isset($args['config']) &&
+                    $args['config']['keyword'] === 'test_rule';
+            }))
+            ->willReturn('edit form content');
+
+        $response = $this->controller->handle($request);
+        $this->assertEquals('edit form content', $response);
     }
 
     public function testStoreAction(): void
