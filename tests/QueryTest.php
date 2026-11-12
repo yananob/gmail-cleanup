@@ -56,4 +56,53 @@ final class QueryTest extends TestCase
         $query = new Query();
         $this->assertEquals(trim($expected), trim($query->build($target)));
     }
+
+    public function testBuildHandlesInvalidDateBefore(): void
+    {
+        $query = new Query();
+        $result = $query->build([
+            'keyword' => 'test',
+            'date_before' => 'invalid_period_string'
+        ]);
+        $this->assertEquals('test', $result);
+    }
+
+    public function testBuildTrimsInputs(): void
+    {
+        $query = new Query();
+        $result = $query->build([
+            'keyword' => '  hello world  ',
+            'from' => '  user@example.com  ',
+            'to' => '  dest@example.com  ',
+            'subject' => '  urgent alert  ',
+            'label' => '  inbox  ',
+        ]);
+        $this->assertEquals('hello world from:user@example.com to:dest@example.com subject:urgent alert label:inbox', $result);
+    }
+
+    public function testBuildFilterQuery(): void
+    {
+        $query = new Query();
+
+        // 空の条件
+        $this->assertSame('', $query->buildFilterQuery([]));
+
+        // 全条件の組み合わせ
+        $criteria = [
+            'from' => ' sender@example.com ',
+            'to' => ' recipient@example.com ',
+            'subject' => ' Monthly Report ',
+            'hasAttachment' => true,
+            'query' => ' quarterly results ',
+            'negatedQuery' => ' confidential draft ',
+        ];
+        $expected = 'from:sender@example.com to:recipient@example.com subject:Monthly Report has:attachment quarterly results -{confidential draft}';
+        $this->assertSame($expected, $query->buildFilterQuery($criteria));
+
+        // 否定クエリが1単語の場合
+        $criteriaSingleWordNegation = [
+            'negatedQuery' => 'spam',
+        ];
+        $this->assertSame('-spam', $query->buildFilterQuery($criteriaSingleWordNegation));
+    }
 }

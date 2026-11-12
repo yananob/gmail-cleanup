@@ -32,14 +32,24 @@ class GmailClientFactory
 
         $authConfig = getenv('GOOGLE_API_CLIENT_SECRET');
         if ($authConfig) {
-            $client->setAuthConfig(json_decode($authConfig, true));
+            $decodedAuthConfig = json_decode($authConfig, true);
+            if (is_array($decodedAuthConfig)) {
+                $client->setAuthConfig($decodedAuthConfig);
+            } else {
+                error_log('Invalid JSON in GOOGLE_API_CLIENT_SECRET environment variable.');
+            }
         }
         $client->setAccessType('offline');
         $client->setPrompt('select_account consent');
 
         $token = getenv('GOOGLE_API_TOKEN');
         if ($token) {
-            $client->setAccessToken(json_decode($token, true));
+            $decodedToken = json_decode($token, true);
+            if (is_array($decodedToken)) {
+                $client->setAccessToken($decodedToken);
+            } else {
+                error_log('Invalid JSON in GOOGLE_API_TOKEN environment variable.');
+            }
         }
 
         if ($userEmail = AppConfig::getGmailUserEmail()) {

@@ -151,5 +151,6 @@ Gmailで設定したラベル。
 ## 実装詳細
 
 - **アーキテクチャ、環境変数、コーディング規約**については [docs/implementation_policy.md](docs/implementation_policy.md) を参照してください。
-- **削除処理の実装**は `src/GmailCleanupHandler.php`（コア処理）、`src/Query.php`（検索クエリ生成）、`src/ConfigRepository.php`（設定取得）で定義されています。
+- **削除処理の実装**は `src/GmailCleanupHandler.php`（コア処理）、`src/Query.php`（クリーンアップ用およびフィルタープレビュー用検索クエリ生成）、`src/ConfigRepository.php`（設定取得）で定義されています。
 - **Webコントローラーおよびフィルター管理**は `src/Http/Controller.php` および `src/GmailFilterService.php` で定義されています。
+- **API認証クライアントの生成**は `src/Service/GmailClientFactory.php` で集約・管理されています。

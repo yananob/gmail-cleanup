@@ -213,32 +213,8 @@ class Controller
                 try {
                     $gmailAppService = $this->getGmailAppService();
 
-                    $queryParts = [];
-                    if (!empty($body['from'])) {
-                        $queryParts[] = 'from:' . trim((string)$body['from']);
-                    }
-                    if (!empty($body['to'])) {
-                        $queryParts[] = 'to:' . trim((string)$body['to']);
-                    }
-                    if (!empty($body['subject'])) {
-                        $queryParts[] = 'subject:' . trim((string)$body['subject']);
-                    }
-                    if (!empty($body['hasAttachment'])) {
-                        $queryParts[] = 'has:attachment';
-                    }
-                    if (!empty($body['query'])) {
-                        $queryParts[] = trim((string)$body['query']);
-                    }
-                    if (!empty($body['negatedQuery'])) {
-                        $negated = trim((string)$body['negatedQuery']);
-                        if (str_contains($negated, ' ')) {
-                            $queryParts[] = '-{' . $negated . '}';
-                        } else {
-                            $queryParts[] = '-' . $negated;
-                        }
-                    }
-
-                    $query = implode(' ', $queryParts);
+                    $queryBuilder = new Query();
+                    $query = $queryBuilder->buildFilterQuery($body);
                     $this->logger->info('Filter preview request', ['query' => $query]);
 
                     $messages = $gmailAppService->listMessages($query, 20);
@@ -316,18 +292,20 @@ class Controller
         return "Gmail Cleanup Service is running. Path: " . $uri;
     }
 
-    private function getGmailFilterService(): GmailFilterService
+    private function getGmailService(): Gmail
     {
         $client = $this->gmailClientFactory->create();
-        $gmailService = $this->gmailClientFactory->createGmailService($client);
-        return new GmailFilterService($gmailService);
+        return $this->gmailClientFactory->createGmailService($client);
+    }
+
+    private function getGmailFilterService(): GmailFilterService
+    {
+        return new GmailFilterService($this->getGmailService());
     }
 
     private function getGmailAppService(): GmailService
     {
-        $client = $this->gmailClientFactory->create();
-        $gmailService = $this->gmailClientFactory->createGmailService($client);
-        return new GmailService($gmailService);
+        return new GmailService($this->getGmailService());
     }
 
     /**
